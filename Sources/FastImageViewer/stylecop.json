@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DotNetAnalyzers/StyleCopAnalyzers/master/StyleCop.Analyzers/StyleCop.Analyzers/Settings/stylecop.schema.json",
+  "settings": {
+    "documentationRules": {
+      "xmlHeader": true,
+      "companyName": "Ivan Kasyanov",
+      "variables": {
+        "year": "2025",
+        "licenseName": "GNU Affero General Public License Version 3",
+        "licenseFile": "LICENSE"
+      },
+      "copyrightText": "© {year} {companyName}.\nThis software is licensed under {licenseName}. See {licenseFile} for details."
+    },
+    "layoutRules": {
+      "newlineAtEndOfFile": "omit"
+    },
+    "orderingRules": {
+      "usingDirectivesPlacement": "outsideNamespace"
+    },
+    "spacingRules": {
+    }
+  }
+}

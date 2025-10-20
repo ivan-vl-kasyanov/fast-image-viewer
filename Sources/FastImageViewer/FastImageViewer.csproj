@@ -1,0 +1,75 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <DebugSymbols>True</DebugSymbols>
+    <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <DocumentationFile>$(ProjectDir)FastImageViewer.xml</DocumentationFile>
+    <Platforms>x64</Platforms>
+    <Configurations>Debug;Release;ReleasePublish</Configurations>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <VersionPrefix>0.0.1</VersionPrefix>
+    <AssemblyVersion>0.0.1</AssemblyVersion>
+    <FileVersion>0.0.1.0</FileVersion>
+    <InformationalVersion>0.0.1.0</InformationalVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Company>Ivan Kasyanov</Company>
+    <Authors>Ivan Kasyanov</Authors>
+    <Product>OpenAI Translator</Product>
+    <Copyright>Copyright © 2025</Copyright>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IsPublishable>False</IsPublishable>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <Optimize>False</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IsPublishable>False</IsPublishable>
+    <DefineConstants />
+    <DebugType>none</DebugType>
+    <Optimize>True</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleasePublish|x64'">
+    <IsPublishable>True</IsPublishable>
+    <DefineConstants />
+    <DebugType>none</DebugType>
+    <Optimize>True</Optimize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="stylecop.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <Target Name="PostBuildCleanup" AfterTargets="PostBuildEvent" Condition="'$(Configuration)'=='Release'">
+    <ItemGroup>
+      <XmlFiles Include="$(OutputPath)*.xml" />
+      <DepsJsonFiles Include="$(OutputPath)*.deps.json" />
+    </ItemGroup>
+    <Delete Files="@(XmlFiles)" />
+    <Delete Files="@(DepsJsonFiles)" />
+  </Target>
+
+</Project>
