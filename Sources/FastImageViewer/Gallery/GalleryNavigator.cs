@@ -11,6 +11,8 @@ internal sealed class GalleryNavigator(IReadOnlyList<ImageEntry> entries)
 {
     private readonly IReadOnlyList<ImageEntry> _entries = entries;
 
+    private int _index = 0;
+
     public int Count => _entries.Count;
 
     public ImageEntry? Current => _entries.Count == 0
@@ -24,8 +26,6 @@ internal sealed class GalleryNavigator(IReadOnlyList<ImageEntry> entries)
     public bool CanMovePrevious => _index > 0;
 
     public bool CanMoveNext => _index < _entries.Count - 1;
-
-    private int _index = 0;
 
     public ImageEntry? MovePrevious()
     {

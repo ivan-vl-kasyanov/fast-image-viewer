@@ -52,24 +52,24 @@ internal static class ImageFormatHelper
         ".avif",
     }.ToImmutableHashSet();
 
-    internal static bool IsSupported(this string extension) // TODO: `this` added – use it.
+    internal static bool IsSupported(this string extension)
     {
         return
             _commonImageExtensions.Contains(extension) ||
             _complicatedImageExtensions.Contains(extension);
     }
 
-    internal static bool IsComplicated(this string extension) // TODO: `this` added – use it.
+    internal static bool IsComplicated(this string extension)
     {
         return _complicatedImageExtensions.Contains(extension);
     }
 
     internal static bool IsDiskCacheEligible(
-        this string extension, // TODO: `this` added – use it.
+        this string extension,
         long length)
     {
         return
             (length > AppConstants.DiskCacheEligibilityThresholdBytes) ||
-            IsComplicated(extension);
+            extension.IsComplicated();
     }
 }

@@ -8,27 +8,41 @@ using FastImageViewer.Configuration;
 using Microsoft.Extensions.Caching.Distributed;
 
 using ZiggyCreatures.Caching.Fusion;
+using ZiggyCreatures.Caching.Fusion.Serialization.SystemTextJson;
 
 namespace FastImageViewer.Caching;
 
 internal static class FusionCacheFactory
 {
+    private const int CacheDurationMinutes = 15;
+    private const int CacheJitterMinutes = 2;
+    private const int FailSafeDurationHours = 1;
+    private const int DistributedCacheDurationDays = 30;
+
+    private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(CacheDurationMinutes);
+    private static readonly TimeSpan _cacheJitter = TimeSpan.FromMinutes(CacheJitterMinutes);
+    private static readonly TimeSpan _failSafeDuration = TimeSpan.FromHours(FailSafeDurationHours);
+    private static readonly TimeSpan _distributedCacheDuration = TimeSpan.FromDays(DistributedCacheDurationDays);
+
     internal static IFusionCache Create(IDistributedCache distributedCache)
     {
         var options = new FusionCacheOptions
         {
             CacheName = AppConstants.AppName,
-            DistributedCache = distributedCache,
             DefaultEntryOptions = new FusionCacheEntryOptions
             {
-                Duration = TimeSpan.FromMinutes(15),
-                JitterMaxDuration = TimeSpan.FromMinutes(2),
+                Duration = _cacheDuration,
+                JitterMaxDuration = _cacheJitter,
                 IsFailSafeEnabled = true,
-                FailSafeMaxDuration = TimeSpan.FromHours(1),
-                DistributedCacheDuration = TimeSpan.FromDays(30),
+                FailSafeMaxDuration = _failSafeDuration,
+                DistributedCacheDuration = _distributedCacheDuration,
             },
         };
 
-        return new FusionCache(options);
+        var cache = new FusionCache(options);
+        cache.SetupSerializer(new FusionCacheSystemTextJsonSerializer());
+        cache.SetupDistributedCache(distributedCache);
+
+        return cache;
     }
 }

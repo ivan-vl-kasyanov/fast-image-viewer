@@ -5,6 +5,10 @@
 
 using System.Runtime.Versioning;
 
+using Akavache;
+using Akavache.Sqlite3;
+using Akavache.SystemTextJson;
+
 using Avalonia;
 
 using FastImageViewer.Configuration;
@@ -23,10 +27,16 @@ internal static class Program
     {
         var parseResult = WarmthModeParser.Parse(args);
         AppStartupContext.SetMode(parseResult.Mode);
-        BlobCache.ApplicationName = AppConstants.AppName; // `BlobCache` not found. Note that "akavache.core" library is deprecated, use "Akavache".
-        Akavache
-            .Registrations
-            .Start(AppConstants.AppName); // `Registrations` not found in the `Akavache` namespace. Note that "akavache.core" library is deprecated, use "Akavache".
+
+        Splat
+            .Builder
+            .AppBuilder
+            .CreateSplatBuilder()
+            .WithAkavacheCacheDatabase<SystemJsonSerializer>(builder => builder
+                .WithApplicationName(AppConstants.AppName)
+                .WithSqliteProvider()
+                .WithSqliteDefaults());
+
         using var logger = PerformanceLogger.Create(parseResult.Mode);
         AppStartupContext.SetLogger(logger);
 
@@ -34,9 +44,10 @@ internal static class Program
             .StartWithClassicDesktopLifetime(parseResult.RemainingArgs);
     }
 
-    private static AppBuilder BuildAvaloniaApp()
+    private static Avalonia.AppBuilder BuildAvaloniaApp()
     {
-        return AppBuilder
+        return Avalonia
+            .AppBuilder
             .Configure<App>()
             .UsePlatformDetect()
             .With(new Win32PlatformOptions())

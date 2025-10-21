@@ -6,6 +6,8 @@
 using System.Diagnostics;
 using System.Reactive.Threading.Tasks;
 
+using Akavache;
+
 using Avalonia.Controls;
 using Avalonia.Threading;
 
@@ -25,10 +27,8 @@ internal sealed class MainController : IDisposable
     private readonly WarmthMode _mode;
     private readonly PerformanceLogger _logger;
     private readonly ImagePresenter _presenter;
-    private readonly ScreenMetricsProvider _screenMetricsProvider = new();
-    private readonly GalleryScanner _galleryScanner = new();
-    private readonly ICachePipeline _cachePipeline;
-    private IReadOnlyList<ImageEntry> _entries = Array.Empty<ImageEntry>();
+    private readonly ImageCachePipeline _cachePipeline;
+    private IReadOnlyList<ImageEntry> _entries = [];
     private GalleryNavigator? _navigator;
     private ScreenMetrics _screenMetrics;
     private CancellationTokenSource? _displayCancellationTokenSource;
@@ -47,15 +47,11 @@ internal sealed class MainController : IDisposable
         _logger = logger;
         _presenter = presenter;
 
-        var distributed = new AkavacheDistributedCacheAdapter(BlobCache.LocalMachine); // FIXME: Invalid argument type. Note that "akavache.core" library is deprecated, use "Akavache".
+        var distributed = new AkavacheDistributedCacheAdapter(CacheDatabase.LocalMachine);
         var fusionCache = FusionCacheFactory.Create(distributed);
-        var reducer = new ImageReducer();
-        var originalLoader = new OriginalImageLoader();
         _cachePipeline = new ImageCachePipeline(
             fusionCache,
             distributed,
-            reducer,
-            originalLoader,
             logger,
             mode);
     }
@@ -76,11 +72,8 @@ internal sealed class MainController : IDisposable
         cancellationToken.ThrowIfCancellationRequested();
 
         _screenMetrics = await Dispatcher.UIThread.InvokeAsync(
-            () => _screenMetricsProvider.GetPrimaryMetrics(topLevel));
-        _entries = await _galleryScanner
-            .ScanAsync()
-            .ToObservable()
-            .ToTask(cancellationToken);
+            () => ScreenMetricsProvider.GetPrimaryMetrics(topLevel));
+        _entries = await GalleryScanner.ScanAsync(cancellationToken);
         _navigator = new GalleryNavigator(_entries);
         _initialized = true;
         UpdateState();
@@ -151,38 +144,38 @@ internal sealed class MainController : IDisposable
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (_lastPresented == PresentationKind.Original) // TODO: Simplify nesting.
+        if (_lastPresented != PresentationKind.Original)
         {
-            if (_currentReduced is null)
-            {
-                _currentReduced = await _cachePipeline.GetReducedAsync(
-                    _currentEntry,
-                    _screenMetrics,
-                    cancellationToken);
-                if (_currentReduced is null)
-                {
-                    return;
-                }
-            }
+            _currentOriginal ??= await _cachePipeline.GetOriginalAsync(
+                _currentEntry,
+                cancellationToken);
 
-            _lastPresented = PresentationKind.Reduced;
+            _lastPresented = PresentationKind.Original;
             await PresentAsync(
                 _currentEntry,
-                _currentReduced,
+                _currentOriginal,
                 cancellationToken);
             UpdateState();
 
             return;
         }
 
-        _currentOriginal ??= await _cachePipeline.GetOriginalAsync(
-            _currentEntry,
-            cancellationToken);
+        if (_currentReduced is null)
+        {
+            _currentReduced = await _cachePipeline.GetReducedAsync(
+                _currentEntry,
+                _screenMetrics,
+                cancellationToken);
+            if (_currentReduced is null)
+            {
+                return;
+            }
+        }
 
-        _lastPresented = PresentationKind.Original;
+        _lastPresented = PresentationKind.Reduced;
         await PresentAsync(
             _currentEntry,
-            _currentOriginal,
+            _currentReduced,
             cancellationToken);
         UpdateState();
     }
@@ -204,7 +197,7 @@ internal sealed class MainController : IDisposable
         if (entry is null)
         {
             await _presenter
-                .ClearAsync()
+                .ClearAsync(cancellationToken)
                 .ToObservable()
                 .ToTask(cancellationToken);
             _currentEntry = null;
@@ -349,8 +342,8 @@ internal sealed class MainController : IDisposable
                 false,
                 false,
                 false,
-                NonAllocStrings.ToggleShowOriginal,
-                NonAllocStrings.WindowTitleFallback));
+                NonAllocationStrings.ToggleShowOriginal,
+                NonAllocationStrings.WindowTitleFallback));
 
             return;
         }
@@ -362,9 +355,9 @@ internal sealed class MainController : IDisposable
             _ => false,
         };
         var toggleText = _lastPresented == PresentationKind.Original
-            ? NonAllocStrings.ToggleShowReduced
-            : NonAllocStrings.ToggleShowOriginal;
-        var title = _currentEntry?.FileName ?? NonAllocStrings.WindowTitleFallback;
+            ? NonAllocationStrings.ToggleShowReduced
+            : NonAllocationStrings.ToggleShowOriginal;
+        var title = _currentEntry?.FileName ?? NonAllocationStrings.WindowTitleFallback;
         PublishState(new ViewerState(
             _navigator.CanMovePrevious,
             _navigator.CanMoveNext,

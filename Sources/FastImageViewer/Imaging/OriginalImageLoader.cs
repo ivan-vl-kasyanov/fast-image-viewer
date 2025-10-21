@@ -9,9 +9,9 @@ using ImageMagick;
 
 namespace FastImageViewer.Imaging;
 
-internal sealed class OriginalImageLoader
+internal static class OriginalImageLoader
 {
-    public Task<ImageData> LoadAsync(
+    public static Task<ImageData> LoadAsync(
         ImageEntry entry,
         CancellationToken cancellationToken)
     {
@@ -40,8 +40,8 @@ internal sealed class OriginalImageLoader
         image.Write(stream);
         var bytes = stream.ToArray();
         var metadata = new ImageMetadata(
-            Convert.ToInt32(image.Width), // TODO: Add checks for overflow.
-            Convert.ToInt32(image.Height), // TODO: Add checks for overflow.
+            image.Width.EnsureDimensionWithinInt32Range(nameof(image.Width)),
+            image.Height.EnsureDimensionWithinInt32Range(nameof(image.Height)),
             dpi);
 
         return new ImageData(bytes, metadata);

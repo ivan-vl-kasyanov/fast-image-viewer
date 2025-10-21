@@ -3,6 +3,7 @@
 // This software is licensed under the GNU Affero General Public License Version 3. See LICENSE for details.
 // </copyright>
 
+using System.Collections.Concurrent;
 using System.Reactive.Threading.Tasks;
 
 using Akavache;
@@ -16,6 +17,7 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
     private const int DefaultCacheExpirationTimeout = 14;
 
     private readonly IBlobCache _blobCache = blobCache;
+    private readonly ConcurrentDictionary<string, CacheEntryOptionsSnapshot> _options = new();
 
     /// <inheritdoc/>
     public byte[]? Get(string key)
@@ -45,7 +47,18 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
     /// <inheritdoc/>
     public void Refresh(string key)
     {
-        // TODO: Implement if possible KISS or remove this comment.
+        var value = Get(key);
+        if (value is null)
+        {
+            return;
+        }
+
+        var expiration = ResolveExpiration(key);
+
+        _blobCache.InsertObject(
+            key,
+            value,
+            expiration);
     }
 
     /// <inheritdoc/>
@@ -53,13 +66,17 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
         string key,
         CancellationToken token = default)
     {
-        // TODO: Implement if possible KISS or remove this comment.
-        return Task.CompletedTask;
+        return RefreshCoreAsync(
+            key,
+            token);
     }
 
     /// <inheritdoc/>
     public void Remove(string key)
     {
+        _options.TryRemove(
+            key,
+            out _);
         _blobCache.Invalidate(key);
     }
 
@@ -68,6 +85,10 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
         string key,
         CancellationToken token = default)
     {
+        _options.TryRemove(
+            key,
+            out _);
+
         return _blobCache
             .Invalidate(key)
             .ToTask(token);
@@ -79,7 +100,10 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
         byte[] value,
         DistributedCacheEntryOptions options)
     {
-        var expiration = ResolveExpiration(options);
+        var snapshot = CreateSnapshot(options);
+        var expiration = ResolveExpiration(snapshot);
+
+        _options[key] = snapshot;
 
         _blobCache.InsertObject(
             key,
@@ -94,7 +118,10 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
         DistributedCacheEntryOptions options,
         CancellationToken token = default)
     {
-        var expiration = ResolveExpiration(options);
+        var snapshot = CreateSnapshot(options);
+        var expiration = ResolveExpiration(snapshot);
+
+        _options[key] = snapshot;
 
         return _blobCache
             .InsertObject(
@@ -104,21 +131,71 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
             .ToTask(token);
     }
 
-    private static DateTimeOffset? ResolveExpiration(DistributedCacheEntryOptions options)
+    private static CacheEntryOptionsSnapshot CreateSnapshot(DistributedCacheEntryOptions options)
+    {
+        return new CacheEntryOptionsSnapshot(
+            options.AbsoluteExpiration,
+            options.AbsoluteExpirationRelativeToNow,
+            options.SlidingExpiration);
+    }
+
+    private static DateTimeOffset? ResolveExpiration(CacheEntryOptionsSnapshot options)
     {
         return
-            options
-                .AbsoluteExpirationRelativeToNow
-                .HasValue
+            options.AbsoluteExpirationRelativeToNow.HasValue
+                ? DateTimeOffset
+                    .UtcNow
+                    .Add(options.AbsoluteExpirationRelativeToNow.Value)
+                : options.AbsoluteExpiration ?? (options.SlidingExpiration.HasValue
                     ? DateTimeOffset
                         .UtcNow
-                        .Add(options.AbsoluteExpirationRelativeToNow.Value)
-                    : options.AbsoluteExpiration ?? (options.SlidingExpiration.HasValue
-                        ? DateTimeOffset
-                            .UtcNow
-                            .Add(options.SlidingExpiration.Value)
-                        : DateTimeOffset
-                            .UtcNow
-                            .AddDays(DefaultCacheExpirationTimeout));
+                        .Add(options.SlidingExpiration.Value)
+                    : DateTimeOffset
+                        .UtcNow
+                        .AddDays(DefaultCacheExpirationTimeout));
+    }
+
+    private DateTimeOffset? ResolveExpiration(string key)
+    {
+        var snapshot = _options.TryGetValue(key, out var cached)
+            ? cached
+            : CacheEntryOptionsSnapshot.Default;
+
+        return ResolveExpiration(snapshot);
+    }
+
+    private async Task RefreshCoreAsync(
+        string key,
+        CancellationToken token)
+    {
+        var value = await GetAsync(
+            key,
+            token);
+        if (value is null)
+        {
+            return;
+        }
+
+        var expiration = ResolveExpiration(key);
+        await _blobCache
+            .InsertObject(
+                key,
+                value,
+                expiration)
+            .ToTask(token);
+    }
+
+    private readonly struct CacheEntryOptionsSnapshot(
+        DateTimeOffset? absoluteExpiration,
+        TimeSpan? absoluteExpirationRelativeToNow,
+        TimeSpan? slidingExpiration)
+    {
+        public static CacheEntryOptionsSnapshot Default { get; } = new(null, null, null);
+
+        public DateTimeOffset? AbsoluteExpiration { get; } = absoluteExpiration;
+
+        public TimeSpan? AbsoluteExpirationRelativeToNow { get; } = absoluteExpirationRelativeToNow;
+
+        public TimeSpan? SlidingExpiration { get; } = slidingExpiration;
     }
 }

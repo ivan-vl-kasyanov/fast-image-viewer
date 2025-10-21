@@ -9,9 +9,9 @@ using ImageMagick;
 
 namespace FastImageViewer.Imaging;
 
-internal sealed class ImageReducer
+internal static class ImageReducer
 {
-    public Task<ImageData> CreateReducedAsync(
+    public static Task<ImageData> CreateReducedAsync(
         ImageEntry entry,
         ScreenMetrics metrics,
         CancellationToken cancellationToken)

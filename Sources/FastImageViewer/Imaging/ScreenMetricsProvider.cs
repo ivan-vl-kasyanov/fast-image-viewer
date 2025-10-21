@@ -9,16 +9,16 @@ using FastImageViewer.Configuration;
 
 namespace FastImageViewer.Imaging;
 
-internal sealed class ScreenMetricsProvider
+internal static class ScreenMetricsProvider
 {
-    public ScreenMetrics GetPrimaryMetrics(TopLevel topLevel)
+    public static ScreenMetrics GetPrimaryMetrics(TopLevel topLevel)
     {
         var screen = topLevel.Screens?.Primary;
         if (screen is null)
         {
             return new ScreenMetrics(
-                Convert.ToInt32(topLevel.ClientSize.Width), // TODO: Add checks for overflow.
-                Convert.ToInt32(topLevel.ClientSize.Height), // TODO: Add checks for overflow.
+                topLevel.ClientSize.Width.EnsureDimensionWithinInt32Range(nameof(topLevel.ClientSize.Width)),
+                topLevel.ClientSize.Height.EnsureDimensionWithinInt32Range(nameof(topLevel.ClientSize.Height)),
                 AppConstants.DefaultDpi);
         }
 

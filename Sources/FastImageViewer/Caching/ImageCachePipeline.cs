@@ -17,51 +17,54 @@ using ZiggyCreatures.Caching.Fusion;
 
 namespace FastImageViewer.Caching;
 
-internal sealed class ImageCachePipeline : ICachePipeline
+internal sealed class ImageCachePipeline(
+    IFusionCache fusionCache,
+    IDistributedCache distributedCache,
+    PerformanceLogger logger,
+    WarmthMode mode) : ICachePipeline
 {
-    private readonly IFusionCache _fusionCache;
-    private readonly IDistributedCache _distributedCache;
-    private readonly ImageReducer _imageReducer;
-    private readonly OriginalImageLoader _originalImageLoader;
-    private readonly PerformanceLogger _logger;
-    private readonly WarmthMode _mode;
+    private const int AbsoluteExpirationTimeDays = 30;
+    private const int MemoryDurationMinutes = 20;
+    private const int JitterMaxDurationMinutes = 2;
+    private const int FailSafeMaxDurationHours = 1;
+    private const int DistributedCacheDurationDays = 30;
+    private const int MemoryOriginalDurationMinutes = 20;
+    private const int JitterOriginalMaxDurationSeconds = 30;
+
+    private static readonly TimeSpan AbsoluteExpirationTime = TimeSpan.FromDays(AbsoluteExpirationTimeDays);
+    private static readonly TimeSpan MemoryDuration = TimeSpan.FromMinutes(MemoryDurationMinutes);
+    private static readonly TimeSpan JitterMaxDuration = TimeSpan.FromMinutes(JitterMaxDurationMinutes);
+    private static readonly TimeSpan FailSafeMaxDuration = TimeSpan.FromHours(FailSafeMaxDurationHours);
+    private static readonly TimeSpan DistributedCacheDuration = TimeSpan.FromDays(DistributedCacheDurationDays);
+    private static readonly TimeSpan MemoryOriginalDuration = TimeSpan.FromMinutes(MemoryOriginalDurationMinutes);
+    private static readonly TimeSpan JitterOriginalMaxDuration = TimeSpan.FromSeconds(JitterOriginalMaxDurationSeconds);
+
+    private readonly IFusionCache _fusionCache = fusionCache;
+    private readonly IDistributedCache _distributedCache = distributedCache;
+    private readonly PerformanceLogger _logger = logger;
+    private readonly WarmthMode _mode = mode;
     private readonly ConcurrentDictionary<string, ImageMetadata> _metadataCache = new();
+
     private readonly DistributedCacheEntryOptions _distributedOptions = new()
     {
-        AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(30),
+        AbsoluteExpirationRelativeToNow = AbsoluteExpirationTime,
     };
 
     private readonly FusionCacheEntryOptions _memoryOptions = new()
     {
-        Duration = TimeSpan.FromMinutes(20),
-        JitterMaxDuration = TimeSpan.FromMinutes(2),
+        Duration = MemoryDuration,
+        JitterMaxDuration = JitterMaxDuration,
         IsFailSafeEnabled = true,
-        FailSafeMaxDuration = TimeSpan.FromHours(1),
-        DistributedCacheDuration = TimeSpan.FromDays(30),
+        FailSafeMaxDuration = FailSafeMaxDuration,
+        DistributedCacheDuration = DistributedCacheDuration,
     };
 
     private readonly FusionCacheEntryOptions _originalOptions = new()
     {
-        Duration = TimeSpan.FromMinutes(5),
-        JitterMaxDuration = TimeSpan.FromSeconds(30),
-        SkipDistributedCache = true, // FIXME: Obsolete: see documentation.
+        Duration = MemoryOriginalDuration,
+        JitterMaxDuration = JitterOriginalMaxDuration,
+        DistributedCacheDuration = TimeSpan.Zero,
     };
-
-    public ImageCachePipeline(
-        IFusionCache fusionCache,
-        IDistributedCache distributedCache,
-        ImageReducer imageReducer,
-        OriginalImageLoader originalImageLoader,
-        PerformanceLogger logger,
-        WarmthMode mode)
-    {
-        _fusionCache = fusionCache;
-        _distributedCache = distributedCache;
-        _imageReducer = imageReducer;
-        _originalImageLoader = originalImageLoader;
-        _logger = logger;
-        _mode = mode;
-    }
 
     public async Task<ImageDataResult?> GetReducedAsync(
         ImageEntry entry,
@@ -77,8 +80,9 @@ internal sealed class ImageCachePipeline : ICachePipeline
 
         var key = entry.CacheKey;
         var l1Watch = Stopwatch.StartNew();
-        var maybe = await _fusionCache.TryGetAsync<byte[]>( // FIXME: invalid arguments set.
+        var maybe = await _fusionCache.TryGetAsync<byte[]>(
             key,
+            _memoryOptions,
             cancellationToken);
         l1Watch.Stop();
 
@@ -91,7 +95,7 @@ internal sealed class ImageCachePipeline : ICachePipeline
                 new PerformanceMeasureInput(
                     PerformanceOperationName,
                     entry.FileName,
-                    NonAllocStrings.SourceL1,
+                    NonAllocationStrings.SourceL1,
                     _mode),
                 metadata,
                 l1Watch.Elapsed.TotalMilliseconds);
@@ -99,7 +103,7 @@ internal sealed class ImageCachePipeline : ICachePipeline
             return new ImageDataResult(
                 maybe.Value,
                 metadata,
-                NonAllocStrings.SourceL1,
+                NonAllocationStrings.SourceL1,
                 true);
         }
 
@@ -123,7 +127,7 @@ internal sealed class ImageCachePipeline : ICachePipeline
                 new PerformanceMeasureInput(
                     PerformanceOperationName,
                     entry.FileName,
-                    NonAllocStrings.SourceL2,
+                    NonAllocationStrings.SourceL2,
                     _mode),
                 metadata,
                 l2Watch.Elapsed.TotalMilliseconds);
@@ -131,7 +135,7 @@ internal sealed class ImageCachePipeline : ICachePipeline
             return new ImageDataResult(
                 fromDisk,
                 metadata,
-                NonAllocStrings.SourceL2,
+                NonAllocationStrings.SourceL2,
                 true);
         }
 
@@ -139,11 +143,11 @@ internal sealed class ImageCachePipeline : ICachePipeline
             new PerformanceMeasureInput(
                 PerformanceOperationName,
                 entry.FileName,
-                NonAllocStrings.SourceCreated,
+                NonAllocationStrings.SourceCreated,
                 _mode),
             async () =>
             {
-                var data = await _imageReducer.CreateReducedAsync(
+                var data = await ImageReducer.CreateReducedAsync(
                     entry,
                     metrics,
                     cancellationToken);
@@ -168,7 +172,7 @@ internal sealed class ImageCachePipeline : ICachePipeline
         return new ImageDataResult(
             created.Bytes,
             created.Metadata,
-            NonAllocStrings.SourceCreated,
+            NonAllocationStrings.SourceCreated,
             true);
     }
 
@@ -180,8 +184,9 @@ internal sealed class ImageCachePipeline : ICachePipeline
 
         var key = entry.CacheKey + AppConstants.OriginalCacheSuffix;
         var l1Watch = Stopwatch.StartNew();
-        var maybe = await _fusionCache.TryGetAsync<byte[]>( // FIXME: invalid arguments set.
+        var maybe = await _fusionCache.TryGetAsync<byte[]>(
             key,
+            _originalOptions,
             cancellationToken);
         l1Watch.Stop();
 
@@ -194,7 +199,7 @@ internal sealed class ImageCachePipeline : ICachePipeline
                 new PerformanceMeasureInput(
                     PerformanceOperationName,
                     entry.FileName,
-                    NonAllocStrings.SourceL1,
+                    NonAllocationStrings.SourceL1,
                     _mode),
                 metadata,
                 l1Watch.Elapsed.TotalMilliseconds);
@@ -202,7 +207,7 @@ internal sealed class ImageCachePipeline : ICachePipeline
             return new ImageDataResult(
                 maybe.Value,
                 metadata,
-                NonAllocStrings.SourceL1,
+                NonAllocationStrings.SourceL1,
                 false);
         }
 
@@ -210,11 +215,11 @@ internal sealed class ImageCachePipeline : ICachePipeline
             new PerformanceMeasureInput(
                 PerformanceOperationName,
                 entry.FileName,
-                NonAllocStrings.SourceOriginal,
+                NonAllocationStrings.SourceOriginal,
                 _mode),
             async () =>
             {
-                var loaded = await _originalImageLoader.LoadAsync(
+                var loaded = await OriginalImageLoader.LoadAsync(
                     entry,
                     cancellationToken);
 
@@ -233,7 +238,7 @@ internal sealed class ImageCachePipeline : ICachePipeline
         return new ImageDataResult(
             data.Bytes,
             data.Metadata,
-            NonAllocStrings.SourceOriginal,
+            NonAllocationStrings.SourceOriginal,
             false);
     }
 
@@ -345,11 +350,11 @@ internal sealed class ImageCachePipeline : ICachePipeline
             new PerformanceMeasureInput(
                 PerformanceOperationName,
                 entry.FileName,
-                NonAllocStrings.SourceCreated,
+                NonAllocationStrings.SourceCreated,
                 _mode),
             async () =>
             {
-                var data = await _imageReducer.CreateReducedAsync(
+                var data = await ImageReducer.CreateReducedAsync(
                     entry,
                     metrics,
                     cancellationToken);

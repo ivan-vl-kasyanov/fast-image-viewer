@@ -10,11 +10,13 @@ using FastImageViewer.Imaging;
 
 namespace FastImageViewer.Gallery;
 
-internal sealed class GalleryScanner
+internal static class GalleryScanner
 {
-    public Task<IReadOnlyList<ImageEntry>> ScanAsync()
+    public static Task<IReadOnlyList<ImageEntry>> ScanAsync(CancellationToken cancellationToken)
     {
-        return Task.Run(BuildEntries);
+        return Task.Run(
+            BuildEntries,
+            cancellationToken);
     }
 
     private static IReadOnlyList<ImageEntry> BuildEntries()
