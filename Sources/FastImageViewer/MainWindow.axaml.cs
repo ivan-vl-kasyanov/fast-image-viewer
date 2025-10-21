@@ -17,14 +17,36 @@ namespace FastImageViewer;
 
 internal sealed partial class MainWindow : Window
 {
+    private const string ImageDisplayName = "DisplayImage";
+    private const string ButtonCloseName = "CloseButton";
+    private const string ButtonBackwardName = "BackwardButton";
+    private const string ButtonForwardName = "ForwardButton";
+    private const string ButtonToggleOriginalName = "ToggleOriginalButton";
+
     private readonly MainController _controller;
+    private readonly Button _closeButton;
+    private readonly Button _backwardButton;
+    private readonly Button _forwardButton;
+    private readonly Button _toggleOriginalButton;
 
     public MainWindow(
         WarmthMode mode,
         PerformanceLogger logger)
     {
         InitializeComponent();
-        var presenter = new ImagePresenter(DisplayImage);
+
+        var displayImage = this.FindControl<Image>(ImageDisplayName)
+            ?? throw new InvalidOperationException($"{ImageDisplayName} control not found.");
+        _closeButton = this.FindControl<Button>(ButtonCloseName)
+            ?? throw new InvalidOperationException($"{ButtonCloseName} control not found.");
+        _backwardButton = this.FindControl<Button>(ButtonBackwardName)
+            ?? throw new InvalidOperationException($"{ButtonBackwardName} control not found.");
+        _forwardButton = this.FindControl<Button>(ButtonForwardName)
+            ?? throw new InvalidOperationException($"{ButtonForwardName} control not found.");
+        _toggleOriginalButton = this.FindControl<Button>(ButtonToggleOriginalName)
+            ?? throw new InvalidOperationException($"{ButtonToggleOriginalName} control not found.");
+
+        var presenter = new ImagePresenter(displayImage);
         _controller = new MainController(
             mode,
             logger,
@@ -32,10 +54,10 @@ internal sealed partial class MainWindow : Window
         _controller.StateChanged += OnStateChanged;
         _controller.CloseRequested += OnCloseRequested;
 
-        CloseButton.Click += (_, _) => _controller.RequestApplicationExit();
-        BackwardButton.Click += OnBackward;
-        ForwardButton.Click += OnForward;
-        ToggleOriginalButton.Click += OnToggleOriginal;
+        _closeButton.Click += (_, _) => _controller.RequestApplicationExit();
+        _backwardButton.Click += OnBackward;
+        _forwardButton.Click += OnForward;
+        _toggleOriginalButton.Click += OnToggleOriginal;
 
         Opened += OnOpened;
         Closed += OnClosed;
@@ -88,10 +110,10 @@ internal sealed partial class MainWindow : Window
 
     private void OnStateChanged(ViewerState state)
     {
-        BackwardButton.IsEnabled = state.CanMoveBackward;
-        ForwardButton.IsEnabled = state.CanMoveForward;
-        ToggleOriginalButton.IsEnabled = state.CanToggleOriginal;
-        ToggleOriginalButton.Content = state.ToggleButtonContent;
+        _backwardButton.IsEnabled = state.CanMoveBackward;
+        _forwardButton.IsEnabled = state.CanMoveForward;
+        _toggleOriginalButton.IsEnabled = state.CanToggleOriginal;
+        _toggleOriginalButton.Content = state.ToggleButtonContent;
         Title = state.WindowTitle;
     }
 }
