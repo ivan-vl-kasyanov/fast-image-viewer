@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FastImageViewer.MainWindow"
+        Width="900"
+        Height="600"
+        Title="Fast Image Viewer">
+  <Grid RowDefinitions="*,Auto">
+    <Border Margin="8"
+            Background="#202020">
+      <Image x:Name="DisplayImage"
+             Stretch="Uniform"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center" />
+    </Border>
+
+    <StackPanel Grid.Row="1"
+                Orientation="Horizontal"
+                HorizontalAlignment="Center"
+                Margin="8"
+                Spacing="12">
+      <Button x:Name="CloseButton"
+              Content="Close"
+              Width="120" />
+      <Button x:Name="BackwardButton"
+              Content="Backward"
+              Width="120" />
+      <Button x:Name="ForwardButton"
+              Content="Forward"
+              Width="120" />
+      <Button x:Name="ToggleOriginalButton"
+              Content="Show Original"
+              Width="160" />
+    </StackPanel>
+  </Grid>
+</Window>
