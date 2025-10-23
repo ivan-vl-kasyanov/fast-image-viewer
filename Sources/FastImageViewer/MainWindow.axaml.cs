@@ -22,12 +22,18 @@ internal sealed partial class MainWindow : Window
     private const string ButtonBackwardName = "BackwardButton";
     private const string ButtonForwardName = "ForwardButton";
     private const string ButtonToggleOriginalName = "ToggleOriginalButton";
+    private const string LoadingContainerName = "LoadingContainer";
+    private const string ErrorContainerName = "ErrorContainer";
+    private const string ErrorTextBlockName = "ErrorTextBlock";
 
     private readonly MainController _controller;
     private readonly Button _closeButton;
     private readonly Button _backwardButton;
     private readonly Button _forwardButton;
     private readonly Button _toggleOriginalButton;
+    private readonly Border _loadingContainer;
+    private readonly Border _errorContainer;
+    private readonly TextBlock _errorTextBlock;
 
     public MainWindow(
         WarmthMode mode,
@@ -45,6 +51,12 @@ internal sealed partial class MainWindow : Window
             ?? throw new InvalidOperationException($"{ButtonForwardName} control not found.");
         _toggleOriginalButton = this.FindControl<Button>(ButtonToggleOriginalName)
             ?? throw new InvalidOperationException($"{ButtonToggleOriginalName} control not found.");
+        _loadingContainer = this.FindControl<Border>(LoadingContainerName)
+            ?? throw new InvalidOperationException($"{LoadingContainerName} control not found.");
+        _errorContainer = this.FindControl<Border>(ErrorContainerName)
+            ?? throw new InvalidOperationException($"{ErrorContainerName} control not found.");
+        _errorTextBlock = this.FindControl<TextBlock>(ErrorTextBlockName)
+            ?? throw new InvalidOperationException($"{ErrorTextBlockName} control not found.");
 
         var presenter = new ImagePresenter(displayImage);
         _controller = new MainController(
@@ -54,7 +66,7 @@ internal sealed partial class MainWindow : Window
         _controller.StateChanged += OnStateChanged;
         _controller.CloseRequested += OnCloseRequested;
 
-        _closeButton.Click += (_, _) => _controller.RequestApplicationExit();
+        _closeButton.Click += OnClose;
         _backwardButton.Click += OnBackward;
         _forwardButton.Click += OnForward;
         _toggleOriginalButton.Click += OnToggleOriginal;
@@ -68,28 +80,47 @@ internal sealed partial class MainWindow : Window
         AvaloniaXamlLoader.Load(this);
     }
 
-    private void OnBackward(object? sender, RoutedEventArgs e)
+    private void OnClose(
+        object? sender,
+        RoutedEventArgs e)
     {
+        _controller.ClearError(default);
+        _controller.RequestApplicationExit();
+    }
+
+    private void OnBackward(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        _controller.ClearError(default);
         FireAndForget.RunAsync(
             _controller.MoveBackwardAsync(default),
             default);
     }
 
-    private void OnForward(object? sender, RoutedEventArgs e)
+    private void OnForward(
+        object? sender,
+        RoutedEventArgs e)
     {
+        _controller.ClearError(default);
         FireAndForget.RunAsync(
             _controller.MoveForwardAsync(default),
             default);
     }
 
-    private void OnToggleOriginal(object? sender, RoutedEventArgs e)
+    private void OnToggleOriginal(
+        object? sender,
+        RoutedEventArgs e)
     {
+        _controller.ClearError(default);
         FireAndForget.RunAsync(
             _controller.ToggleOriginalAsync(default),
             default);
     }
 
-    private void OnOpened(object? sender, EventArgs e)
+    private void OnOpened(
+        object? sender,
+        EventArgs e)
     {
         FireAndForget.RunAsync(
             _controller.InitializeAsync(
@@ -98,7 +129,9 @@ internal sealed partial class MainWindow : Window
             default);
     }
 
-    private void OnClosed(object? sender, EventArgs e)
+    private void OnClosed(
+        object? sender,
+        EventArgs e)
     {
         _controller.Dispose();
     }
@@ -115,5 +148,10 @@ internal sealed partial class MainWindow : Window
         _toggleOriginalButton.IsEnabled = state.CanToggleOriginal;
         _toggleOriginalButton.Content = state.ToggleButtonContent;
         Title = state.WindowTitle;
+        _loadingContainer.Opacity = state.IsLoading ? 1 : 0;
+        _errorTextBlock.Text = state.ErrorMessage ?? string.Empty;
+        var hasError = !string.IsNullOrEmpty(state.ErrorMessage);
+        _errorContainer.Opacity = hasError ? 1 : 0;
+        _errorContainer.IsHitTestVisible = hasError;
     }
 }

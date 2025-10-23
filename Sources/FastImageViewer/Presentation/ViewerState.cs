@@ -10,4 +10,6 @@ internal sealed record ViewerState(
     bool CanMoveForward,
     bool CanToggleOriginal,
     string ToggleButtonContent,
-    string WindowTitle);
+    string WindowTitle,
+    bool IsLoading,
+    string? ErrorMessage);

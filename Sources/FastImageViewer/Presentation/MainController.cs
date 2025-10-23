@@ -37,6 +37,8 @@ internal sealed class MainController : IDisposable
     private ImageDataResult? _currentOriginal;
     private PresentationKind _lastPresented = PresentationKind.None;
     private bool _initialized;
+    private bool _isLoading;
+    private string? _errorMessage;
 
     public MainController(
         WarmthMode mode,
@@ -71,12 +73,18 @@ internal sealed class MainController : IDisposable
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        _screenMetrics = await Dispatcher.UIThread.InvokeAsync(
-            () => ScreenMetricsProvider.GetPrimaryMetrics(topLevel));
+        _screenMetrics = await Dispatcher
+            .UIThread
+            .InvokeAsync(
+                () => ScreenMetricsProvider.GetPrimaryMetrics(topLevel),
+                DispatcherPriority.MaxValue,
+                cancellationToken);
         _entries = await GalleryScanner.ScanAsync(cancellationToken);
         _navigator = new GalleryNavigator(_entries);
         _initialized = true;
-        UpdateState();
+
+        UpdateState(cancellationToken);
+
         if (_entries.Count == 0)
         {
             return;
@@ -101,6 +109,17 @@ internal sealed class MainController : IDisposable
         CloseRequested?.Invoke();
     }
 
+    public void ClearError(CancellationToken cancellationToken)
+    {
+        if (_errorMessage is null)
+        {
+            return;
+        }
+
+        _errorMessage = null;
+        UpdateState(cancellationToken);
+    }
+
     public async Task MoveForwardAsync(CancellationToken cancellationToken)
     {
         if (_navigator is null)
@@ -109,8 +128,8 @@ internal sealed class MainController : IDisposable
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+
         var next = _navigator.MoveNext();
-        cancellationToken.ThrowIfCancellationRequested();
 
         await ShowEntryAsync(
             next,
@@ -126,8 +145,8 @@ internal sealed class MainController : IDisposable
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+
         var previous = _navigator.MovePrevious();
-        cancellationToken.ThrowIfCancellationRequested();
 
         await ShowEntryAsync(
             previous,
@@ -142,42 +161,58 @@ internal sealed class MainController : IDisposable
             return;
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
+        BeginLoading(cancellationToken);
 
-        if (_lastPresented != PresentationKind.Original)
+        try
         {
-            _currentOriginal ??= await _cachePipeline.GetOriginalAsync(
-                _currentEntry,
-                cancellationToken);
-
-            _lastPresented = PresentationKind.Original;
-            await PresentAsync(
-                _currentEntry,
-                _currentOriginal,
-                cancellationToken);
-            UpdateState();
-
-            return;
-        }
-
-        if (_currentReduced is null)
-        {
-            _currentReduced = await _cachePipeline.GetReducedAsync(
-                _currentEntry,
-                _screenMetrics,
-                cancellationToken);
-            if (_currentReduced is null)
+            if (_lastPresented != PresentationKind.Original)
             {
+                _currentOriginal ??= await _cachePipeline.GetOriginalAsync(
+                    _currentEntry,
+                    cancellationToken);
+
+                _lastPresented = PresentationKind.Original;
+                await PresentAsync(
+                    _currentEntry,
+                    _currentOriginal,
+                    cancellationToken);
+
+                UpdateState(cancellationToken);
+
                 return;
             }
-        }
 
-        _lastPresented = PresentationKind.Reduced;
-        await PresentAsync(
-            _currentEntry,
-            _currentReduced,
-            cancellationToken);
-        UpdateState();
+            if (_currentReduced is null)
+            {
+                _currentReduced = await _cachePipeline.GetReducedAsync(
+                    _currentEntry,
+                    _screenMetrics,
+                    cancellationToken);
+                if (_currentReduced is null)
+                {
+                    return;
+                }
+            }
+
+            _lastPresented = PresentationKind.Reduced;
+            await PresentAsync(
+                _currentEntry,
+                _currentReduced,
+                cancellationToken);
+            UpdateState(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            HandleError(ex);
+        }
+        finally
+        {
+            EndLoading(cancellationToken);
+        }
     }
 
     public void Dispose()
@@ -194,66 +229,87 @@ internal sealed class MainController : IDisposable
         cancellationToken.ThrowIfCancellationRequested();
 
         CancelCurrent();
-        if (entry is null)
-        {
-            await _presenter
-                .ClearAsync(cancellationToken)
-                .ToObservable()
-                .ToTask(cancellationToken);
-            _currentEntry = null;
-            _currentReduced = null;
-            _currentOriginal = null;
-            _lastPresented = PresentationKind.None;
-            UpdateState();
+        BeginLoading(cancellationToken);
 
-            return;
-        }
-
-        _currentEntry = entry;
-        _currentReduced = null;
-        _currentOriginal = null;
-        if (preferReduced)
+        try
         {
-            var reduced = await _cachePipeline.GetReducedAsync(
-                entry,
-                _screenMetrics,
-                cancellationToken);
-            if (reduced is not null)
+            if (entry is null)
             {
-                _currentReduced = reduced;
-                _lastPresented = PresentationKind.Reduced;
-                await PresentAsync(
-                    entry,
-                    reduced,
-                    cancellationToken);
-                WarmNeighbors(cancellationToken);
-                UpdateState();
+                await _presenter
+                    .ClearAsync(cancellationToken)
+                    .ToObservable()
+                    .ToTask(cancellationToken);
+
+                _currentEntry = null;
+                _currentReduced = null;
+                _currentOriginal = null;
+                _lastPresented = PresentationKind.None;
+                UpdateState(cancellationToken);
 
                 return;
             }
-        }
 
-        var original = await _cachePipeline.GetOriginalAsync(
-            entry,
-            cancellationToken);
-        _currentOriginal = original;
-        _lastPresented = PresentationKind.Original;
-        await PresentAsync(
-            entry,
-            original,
-            cancellationToken);
-        if ((_mode == WarmthMode.Cold) &&
-            entry.IsDiskCacheEligible)
-        {
-            FireAndForget.RunAsync(
-                EnsureCurrentReducedAsync(
+            _currentEntry = entry;
+            _currentReduced = null;
+            _currentOriginal = null;
+            if (preferReduced)
+            {
+                var reduced = await _cachePipeline.GetReducedAsync(
                     entry,
-                    cancellationToken),
-                cancellationToken);
-        }
+                    _screenMetrics,
+                    cancellationToken);
+                if (reduced is not null)
+                {
+                    _currentReduced = reduced;
+                    _lastPresented = PresentationKind.Reduced;
+                    await PresentAsync(
+                        entry,
+                        reduced,
+                        cancellationToken);
 
-        WarmNeighbors(cancellationToken);
-        UpdateState();
+                    WarmNeighbors(cancellationToken);
+
+                    UpdateState(cancellationToken);
+
+                    return;
+                }
+            }
+
+            var original = await _cachePipeline.GetOriginalAsync(
+                entry,
+                cancellationToken);
+            _currentOriginal = original;
+            _lastPresented = PresentationKind.Original;
+            await PresentAsync(
+                entry,
+                original,
+                cancellationToken);
+            if ((_mode == WarmthMode.Cold) &&
+                entry.IsDiskCacheEligible)
+            {
+                FireAndForget.RunAsync(
+                    EnsureCurrentReducedAsync(
+                        entry,
+                        cancellationToken),
+                    cancellationToken);
+            }
+
+            WarmNeighbors(cancellationToken);
+
+            UpdateState(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            HandleError(ex);
+        }
+        finally
+        {
+            EndLoading(cancellationToken);
+        }
     }
 
     private async Task EnsureCurrentReducedAsync(
@@ -273,7 +329,7 @@ internal sealed class MainController : IDisposable
             string.Equals(_currentEntry.CacheKey, entry.CacheKey, StringComparison.Ordinal))
         {
             _currentReduced = reduced;
-            UpdateState();
+            UpdateState(cancellationToken);
         }
     }
 
@@ -334,8 +390,10 @@ internal sealed class MainController : IDisposable
         _displayCancellationTokenSource = null;
     }
 
-    private void UpdateState()
+    private void UpdateState(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (_navigator is null)
         {
             PublishState(new ViewerState(
@@ -343,7 +401,9 @@ internal sealed class MainController : IDisposable
                 false,
                 false,
                 NonAllocationStrings.ToggleShowOriginal,
-                NonAllocationStrings.WindowTitleFallback));
+                NonAllocationStrings.WindowTitleFallback,
+                _isLoading,
+                _errorMessage));
 
             return;
         }
@@ -358,16 +418,60 @@ internal sealed class MainController : IDisposable
             ? NonAllocationStrings.ToggleShowReduced
             : NonAllocationStrings.ToggleShowOriginal;
         var title = _currentEntry?.FileName ?? NonAllocationStrings.WindowTitleFallback;
+
+        cancellationToken.ThrowIfCancellationRequested();
+
         PublishState(new ViewerState(
             _navigator.CanMovePrevious,
             _navigator.CanMoveNext,
             canToggle,
             toggleText,
-            title));
+            title,
+            _isLoading,
+            _errorMessage));
+    }
+
+    private void BeginLoading(CancellationToken cancellationToken)
+    {
+        if (_isLoading)
+        {
+            return;
+        }
+
+        _isLoading = true;
+        if (_errorMessage is not null)
+        {
+            _errorMessage = null;
+        }
+
+        UpdateState(cancellationToken);
+    }
+
+    private void EndLoading(CancellationToken cancellationToken)
+    {
+        if (!_isLoading)
+        {
+            return;
+        }
+
+        _isLoading = false;
+        UpdateState(cancellationToken);
+    }
+
+    private void HandleError(Exception exception)
+    {
+        _logger.LogBackgroundError(exception);
+        _isLoading = false;
+        _errorMessage = $"{exception.Message}\n\n{exception}";
+        UpdateState(default);
     }
 
     private void PublishState(ViewerState state)
     {
-        Dispatcher.UIThread.Post(() => StateChanged?.Invoke(state));
+        Dispatcher
+            .UIThread
+            .Post(
+                () => StateChanged?.Invoke(state),
+                DispatcherPriority.Normal);
     }
 }

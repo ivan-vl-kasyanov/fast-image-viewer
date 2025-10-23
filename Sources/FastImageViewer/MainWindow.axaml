@@ -8,10 +8,46 @@
   <Grid RowDefinitions="*,Auto">
     <Border Margin="8"
             Background="#202020">
-      <Image x:Name="DisplayImage"
-             Stretch="Uniform"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center" />
+      <Grid>
+        <Image x:Name="DisplayImage"
+               Stretch="Uniform"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center" />
+
+        <Border x:Name="LoadingContainer"
+                Background="#80000000"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                IsHitTestVisible="False"
+                Opacity="0">
+          <StackPanel HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      Spacing="12">
+            <ProgressBar Width="200"
+                          IsIndeterminate="True" />
+            <TextBlock Text="Loading..."
+                       Foreground="White"
+                       HorizontalAlignment="Center" />
+          </StackPanel>
+        </Border>
+
+        <Border x:Name="ErrorContainer"
+                Background="#C0000000"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Padding="16"
+                CornerRadius="4"
+                IsHitTestVisible="False"
+                Opacity="0">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+            <TextBlock x:Name="ErrorTextBlock"
+                       Foreground="White"
+                       FontSize="14"
+                       TextWrapping="Wrap" />
+          </ScrollViewer>
+        </Border>
+      </Grid>
     </Border>
 
     <StackPanel Grid.Row="1"
