@@ -32,6 +32,11 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
         string key,
         CancellationToken token = default)
     {
+        if (!_options.ContainsKey(key))
+        {
+            return null;
+        }
+
         try
         {
             return await _blobCache
@@ -66,7 +71,7 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
         string key,
         CancellationToken token = default)
     {
-        return RefreshCoreAsync(
+        return RefreshInternalAsync(
             key,
             token);
     }
@@ -164,7 +169,7 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
         return ResolveExpiration(snapshot);
     }
 
-    private async Task RefreshCoreAsync(
+    private async Task RefreshInternalAsync(
         string key,
         CancellationToken token)
     {
