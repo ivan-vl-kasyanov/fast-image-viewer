@@ -23,10 +23,4 @@ internal interface ICachePipeline
         ScreenMetrics metrics,
         IProgress<double>? progress,
         CancellationToken cancellationToken);
-
-    Task WarmNeighborsAsync(
-        IReadOnlyList<ImageEntry> entries,
-        int currentIndex,
-        ScreenMetrics metrics,
-        CancellationToken cancellationToken);
 }

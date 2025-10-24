@@ -9,11 +9,7 @@ internal static class NonAllocationStrings
 {
     internal const string SourceOriginal = "Original";
 
-    internal const string SourceL1 = "L1";
-
-    internal const string SourceL2 = "L2";
-
-    internal const string SourceCreated = "Created";
+    internal const string SourceCache = "Cache";
 
     internal const string WindowTitleFallback = "Fast Image Viewer";
 

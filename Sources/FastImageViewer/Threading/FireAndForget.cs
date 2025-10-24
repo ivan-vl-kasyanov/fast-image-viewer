@@ -3,8 +3,6 @@
 // This software is licensed under the GNU Affero General Public License Version 3. See LICENSE for details.
 // </copyright>
 
-using FastImageViewer.Configuration;
-
 namespace FastImageViewer.Threading;
 
 internal static class FireAndForget
@@ -32,16 +30,8 @@ internal static class FireAndForget
             return;
         }
 
-        try
-        {
-            var logger = AppStartupContext.GetLogger();
-            logger.LogBackgroundError(task.Exception);
-        }
-        catch (Exception ex)
-        {
-            Console
-                .Error
-                .WriteLine($"Failed to log background error: \"{ex}\".");
-        }
+        Console
+            .Error
+            .WriteLine($"{task.Exception?.Message}\n{task.Exception}");
     }
 }

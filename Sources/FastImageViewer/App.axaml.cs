@@ -22,11 +22,9 @@ internal sealed class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktopLifetime)
         {
-            var logger = AppStartupContext.GetLogger();
             var mode = AppStartupContext.GetMode();
             var mainWindow = new MainWindow(
-                mode,
-                logger);
+                mode);
             desktopLifetime.MainWindow = mainWindow;
         }
 

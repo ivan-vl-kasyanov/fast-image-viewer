@@ -77,6 +77,7 @@
     <PackageReference Include="Magick.NET-Q16-HDRI-x64" Version="14.9.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.10" />
     <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.4.0" />
     <PackageReference Include="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" Version="2.4.0" />
@@ -88,9 +89,5 @@
     </ItemGroup>
     <Delete Files="@(XmlFiles)" />
   </Target>
-
-  <ItemGroup>
-    <AdditionalFiles Remove="C:\Users\KasyanovIV\AppData\Roaming\SonarLint for Visual Studio\.global\csharp\SonarLint.xml" />
-  </ItemGroup>
-
+  
 </Project>

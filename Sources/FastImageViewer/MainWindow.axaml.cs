@@ -8,7 +8,6 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 
 using FastImageViewer.Configuration;
-using FastImageViewer.Diagnostics;
 using FastImageViewer.Presentation;
 using FastImageViewer.Threading;
 using FastImageViewer.Ui;
@@ -40,8 +39,7 @@ internal sealed partial class MainWindow : Window
     private readonly TextBlock _errorTextBlock;
 
     public MainWindow(
-        WarmthMode mode,
-        PerformanceLogger logger)
+        WarmthMode mode)
     {
         InitializeComponent();
 
@@ -69,7 +67,6 @@ internal sealed partial class MainWindow : Window
         var presenter = new ImagePresenter(displayImage);
         _controller = new MainController(
             mode,
-            logger,
             presenter);
         _controller.StateChanged += OnStateChanged;
         _controller.CloseRequested += OnCloseRequested;

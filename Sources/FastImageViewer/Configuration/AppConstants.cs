@@ -31,9 +31,5 @@ internal static class AppConstants
 
     public const long PreloadRamBudgetBytes = 160L * 1024L * 1024L;
 
-    public const int NeighborWarmCount = 2;
-
-    public const string LogFilePrefix = "perf-";
-
-    public const string LogFileExtension = ".log";
+    public const string LogFileName = "FastImageViewer.log";
 }

@@ -4,14 +4,12 @@
 // </copyright>
 
 using System.Collections.Concurrent;
-using System.Diagnostics;
 
 using FastImageViewer.Configuration;
-using FastImageViewer.Diagnostics;
 using FastImageViewer.Imaging;
 using FastImageViewer.Text;
 
-using Microsoft.Extensions.Caching.Distributed;
+using Serilog;
 
 using ZiggyCreatures.Caching.Fusion;
 
@@ -19,11 +17,8 @@ namespace FastImageViewer.Caching;
 
 internal sealed class ImageCachePipeline(
     IFusionCache fusionCache,
-    IDistributedCache distributedCache,
-    PerformanceLogger logger,
     WarmthMode mode) : ICachePipeline
 {
-    private const int AbsoluteExpirationTimeDays = 30;
     private const int MemoryDurationMinutes = 20;
     private const int JitterMaxDurationMinutes = 2;
     private const int FailSafeMaxDurationHours = 1;
@@ -31,7 +26,6 @@ internal sealed class ImageCachePipeline(
     private const int MemoryOriginalDurationMinutes = 20;
     private const int JitterOriginalMaxDurationSeconds = 30;
 
-    private static readonly TimeSpan AbsoluteExpirationTime = TimeSpan.FromDays(AbsoluteExpirationTimeDays);
     private static readonly TimeSpan MemoryDuration = TimeSpan.FromMinutes(MemoryDurationMinutes);
     private static readonly TimeSpan JitterMaxDuration = TimeSpan.FromMinutes(JitterMaxDurationMinutes);
     private static readonly TimeSpan FailSafeMaxDuration = TimeSpan.FromHours(FailSafeMaxDurationHours);
@@ -40,17 +34,10 @@ internal sealed class ImageCachePipeline(
     private static readonly TimeSpan JitterOriginalMaxDuration = TimeSpan.FromSeconds(JitterOriginalMaxDurationSeconds);
 
     private readonly IFusionCache _fusionCache = fusionCache;
-    private readonly IDistributedCache _distributedCache = distributedCache;
-    private readonly PerformanceLogger _logger = logger;
     private readonly WarmthMode _mode = mode;
     private readonly ConcurrentDictionary<string, ImageMetadata> _metadataCache = new();
 
-    private readonly DistributedCacheEntryOptions _distributedOptions = new()
-    {
-        AbsoluteExpirationRelativeToNow = AbsoluteExpirationTime,
-    };
-
-    private readonly FusionCacheEntryOptions _memoryOptions = new()
+    private readonly FusionCacheEntryOptions _cacheOptions = new()
     {
         Duration = MemoryDuration,
         JitterMaxDuration = JitterMaxDuration,
@@ -71,193 +58,112 @@ internal sealed class ImageCachePipeline(
         ScreenMetrics metrics,
         CancellationToken cancellationToken)
     {
-        const string PerformanceOperationName = "Reduced";
-
-        if (!entry.IsDiskCacheEligible)
-        {
-            return _mode == WarmthMode.Cool
-                ? throw CreateMissingL2Exception(entry)
-                : null;
-        }
-
-        var key = entry.CacheKey;
-        if (_mode == WarmthMode.Cold)
+        if (!entry.IsDiskCacheEligible ||
+            (_mode == WarmthMode.Cold))
         {
             return null;
         }
 
-        var l1Watch = Stopwatch.StartNew();
-        var maybe = await _fusionCache.TryGetAsync<byte[]>(
-            key,
-            _memoryOptions,
-            cancellationToken);
-        l1Watch.Stop();
+        var key = entry.CacheKey;
 
-        if (maybe.HasValue)
+        try
         {
-            var metadata = EnsureMetadata(
+            var bytes = await _fusionCache.GetOrSetAsync<byte[]>(
                 key,
-                maybe.Value);
-            _logger.LogDuration(
-                new PerformanceMeasureInput(
-                    PerformanceOperationName,
-                    entry.FileName,
-                    NonAllocationStrings.SourceL1,
-                    _mode),
-                metadata,
-                l1Watch.Elapsed.TotalMilliseconds);
+                async (_, token) =>
+                {
+                    var data = await ImageReducer.CreateReducedAsync(
+                        entry,
+                        metrics,
+                        token);
+                    _metadataCache[key] = data.Metadata;
 
-            return new ImageDataResult(
-                maybe.Value,
-                metadata,
-                NonAllocationStrings.SourceL1,
-                true);
-        }
-
-        var l2Watch = Stopwatch.StartNew();
-        var fromDisk = await _distributedCache.GetAsync(
-            key,
-            cancellationToken);
-        l2Watch.Stop();
-
-        if (fromDisk is not null)
-        {
-            var metadata = EnsureMetadata(
-                key,
-                fromDisk);
-            await _fusionCache.SetAsync(
-                key,
-                fromDisk,
-                _memoryOptions,
+                    return data.Bytes;
+                },
+                _cacheOptions,
                 cancellationToken);
-            _logger.LogDuration(
-                new PerformanceMeasureInput(
-                    PerformanceOperationName,
-                    entry.FileName,
-                    NonAllocationStrings.SourceL2,
-                    _mode),
-                metadata,
-                l2Watch.Elapsed.TotalMilliseconds);
+            var metadata = EnsureMetadata(
+                key,
+                bytes);
 
             return new ImageDataResult(
-                fromDisk,
+                bytes,
                 metadata,
-                NonAllocationStrings.SourceL2,
+                NonAllocationStrings.SourceCache,
                 true);
         }
-
-        if (_mode == WarmthMode.Cool)
+        catch (OperationCanceledException)
         {
-            throw CreateMissingL2Exception(entry);
+            throw;
         }
+        catch (Exception ex)
+        {
+            LogBackgroundError(
+                ex,
+                key);
 
-        var created = await _logger.MeasureAsync(
-            new PerformanceMeasureInput(
-                PerformanceOperationName,
-                entry.FileName,
-                NonAllocationStrings.SourceCreated,
-                _mode),
-            async () =>
-            {
-                var data = await ImageReducer.CreateReducedAsync(
-                    entry,
-                    metrics,
-                    cancellationToken);
-
-                return new PerformanceMeasureResult<ImageData>(
-                    data,
-                    data.Metadata);
-            });
-
-        _metadataCache[key] = created.Metadata;
-        await _distributedCache.SetAsync(
-            key,
-            created.Bytes,
-            _distributedOptions,
-            cancellationToken);
-        await _fusionCache.SetAsync(
-            key,
-            created.Bytes,
-            _memoryOptions,
-            cancellationToken);
-
-        return new ImageDataResult(
-            created.Bytes,
-            created.Metadata,
-            NonAllocationStrings.SourceCreated,
-            true);
+            return null;
+        }
     }
 
     public async Task<ImageDataResult> GetOriginalAsync(
         ImageEntry entry,
         CancellationToken cancellationToken)
     {
-        const string PerformanceOperationName = "Original";
-
         var key = entry.CacheKey + AppConstants.OriginalCacheSuffix;
-        if (_mode != WarmthMode.Cold)
+
+        try
         {
-            var l1Watch = Stopwatch.StartNew();
-            var maybe = await _fusionCache.TryGetAsync<byte[]>(
-                key,
-                _originalOptions,
-                cancellationToken);
-            l1Watch.Stop();
-
-            if (maybe.HasValue)
+            if (_mode == WarmthMode.Cold)
             {
-                var metadata = EnsureMetadata(
-                    key,
-                    maybe.Value);
-                _logger.LogDuration(
-                    new PerformanceMeasureInput(
-                        PerformanceOperationName,
-                        entry.FileName,
-                        NonAllocationStrings.SourceL1,
-                        _mode),
-                    metadata,
-                    l1Watch.Elapsed.TotalMilliseconds);
-
-                return new ImageDataResult(
-                    maybe.Value,
-                    metadata,
-                    NonAllocationStrings.SourceL1,
-                    false);
-            }
-        }
-
-        var data = await _logger.MeasureAsync(
-            new PerformanceMeasureInput(
-                PerformanceOperationName,
-                entry.FileName,
-                NonAllocationStrings.SourceOriginal,
-                _mode),
-            async () =>
-            {
-                var loaded = await OriginalImageLoader.LoadAsync(
+                var data = await OriginalImageLoader.LoadAsync(
                     entry,
                     cancellationToken);
 
-                return new PerformanceMeasureResult<ImageData>(
-                    loaded,
-                    loaded.Metadata);
-            });
+                return new ImageDataResult(
+                    data.Bytes,
+                    data.Metadata,
+                    NonAllocationStrings.SourceOriginal,
+                    false);
+            }
 
-        _metadataCache[key] = data.Metadata;
-        if (_mode != WarmthMode.Cold)
-        {
-            await _fusionCache.SetAsync(
+            var bytes = await _fusionCache.GetOrSetAsync<byte[]>(
                 key,
-                data.Bytes,
+                async (_, token) =>
+                {
+                    var data = await OriginalImageLoader.LoadAsync(
+                        entry,
+                        token);
+                    _metadataCache[key] = data.Metadata;
+
+                    return data.Bytes;
+                },
                 _originalOptions,
                 cancellationToken);
-        }
+            var metadata = EnsureMetadata(
+                key,
+                bytes);
 
-        return new ImageDataResult(
-            data.Bytes,
-            data.Metadata,
-            NonAllocationStrings.SourceOriginal,
-            false);
+            return new ImageDataResult(
+                bytes,
+                metadata,
+                NonAllocationStrings.SourceCache,
+                false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            LogBackgroundError(
+                ex,
+                key);
+
+            throw new InvalidOperationException(
+                $"Failed to load original image \"{entry.FileName}\".",
+                ex);
+        }
     }
 
     public async Task WarmAllAsync(
@@ -294,131 +200,87 @@ internal sealed class ImageCachePipeline(
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            await EnsureDistributedAsync(
-                entry,
-                metrics,
-                cancellationToken);
+            try
+            {
+                var key = entry.CacheKey;
+                var bytes = await _fusionCache.GetOrSetAsync<byte[]>(
+                    key,
+                    async (_, token) =>
+                    {
+                        var data = await ImageReducer.CreateReducedAsync(
+                            entry,
+                            metrics,
+                            token);
+                        _metadataCache[key] = data.Metadata;
 
-            processed++;
-            progress?.Report((double)processed / eligible.Count);
+                        return data.Bytes;
+                    },
+                    _cacheOptions,
+                    cancellationToken);
+                EnsureMetadata(
+                    key,
+                    bytes);
+                processed++;
+                progress?.Report((double)processed / eligible.Count);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                LogBackgroundError(
+                    ex,
+                    entry.CacheKey);
+            }
         }
 
         long budget = 0;
-        foreach (var entry in eligible)
+        var cacheKeys = eligible.Select(entry => entry.CacheKey);
+        foreach (var key in cacheKeys)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (budget >= AppConstants.PreloadRamBudgetBytes)
+            try
             {
-                break;
-            }
+                var existing = await _fusionCache.TryGetAsync<byte[]>(
+                    key,
+                    _cacheOptions,
+                    cancellationToken);
+                if (!existing.HasValue)
+                {
+                    continue;
+                }
 
-            var result = await GetReducedAsync(
-                entry,
-                metrics,
-                cancellationToken);
-            if (result is null)
+                budget += existing.Value.Length;
+                if (budget >= AppConstants.PreloadRamBudgetBytes)
+                {
+                    break;
+                }
+            }
+            catch (OperationCanceledException)
             {
-                continue;
+                throw;
             }
-
-            budget += result.Bytes.Length;
+            catch (Exception ex)
+            {
+                LogBackgroundError(
+                    ex,
+                    key);
+            }
         }
 
         progress?.Report(1);
     }
 
-    public async Task WarmNeighborsAsync(
-        IReadOnlyList<ImageEntry> entries,
-        int currentIndex,
-        ScreenMetrics metrics,
-        CancellationToken cancellationToken)
+    private static void LogBackgroundError(
+        Exception exception,
+        string cacheKey)
     {
-        if (_mode == WarmthMode.Cold)
-        {
-            return;
-        }
-
-        for (var offset = 1; offset <= AppConstants.NeighborWarmCount; offset++)
-        {
-            var previousIndex = currentIndex - offset;
-            if ((previousIndex >= 0) &&
-                (previousIndex < entries.Count))
-            {
-                await GetReducedAsync(
-                    entries[previousIndex],
-                    metrics,
-                    cancellationToken);
-            }
-
-            var nextIndex = currentIndex + offset;
-            if ((nextIndex >= 0) &&
-                (nextIndex < entries.Count))
-            {
-                await GetReducedAsync(
-                    entries[nextIndex],
-                    metrics,
-                    cancellationToken);
-            }
-        }
-    }
-
-    private async Task EnsureDistributedAsync(
-        ImageEntry entry,
-        ScreenMetrics metrics,
-        CancellationToken cancellationToken)
-    {
-        const string PerformanceOperationName = "Reduced";
-
-        if (!entry.IsDiskCacheEligible)
-        {
-            return;
-        }
-
-        var existing = await _distributedCache.GetAsync(
-            entry.CacheKey,
-            cancellationToken);
-        if (existing is not null)
-        {
-            _metadataCache.TryAdd(
-                entry.CacheKey,
-                EnsureMetadata(
-                    entry.CacheKey,
-                    existing));
-
-            return;
-        }
-
-        var created = await _logger.MeasureAsync(
-            new PerformanceMeasureInput(
-                PerformanceOperationName,
-                entry.FileName,
-                NonAllocationStrings.SourceCreated,
-                _mode),
-            async () =>
-            {
-                var data = await ImageReducer.CreateReducedAsync(
-                    entry,
-                    metrics,
-                    cancellationToken);
-
-                return new PerformanceMeasureResult<ImageData>(
-                    data,
-                    data.Metadata);
-            });
-
-        _metadataCache[entry.CacheKey] = created.Metadata;
-        await _distributedCache.SetAsync(
-            entry.CacheKey,
-            created.Bytes,
-            _distributedOptions,
-            cancellationToken);
-    }
-
-    private static InvalidOperationException CreateMissingL2Exception(ImageEntry entry)
-    {
-        return new InvalidOperationException(
-            $"L2 cache entry was not found for '{entry.FileName}'.");
+        Log.Error(
+            exception,
+            "Cache pipeline error for key \"{CacheKey}\".",
+            cacheKey);
     }
 
     private ImageMetadata EnsureMetadata(

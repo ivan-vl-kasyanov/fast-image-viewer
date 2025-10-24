@@ -3,7 +3,6 @@
 // This software is licensed under the GNU Affero General Public License Version 3. See LICENSE for details.
 // </copyright>
 
-using System.Diagnostics;
 using System.Reactive.Threading.Tasks;
 
 using Akavache;
@@ -13,11 +12,9 @@ using Avalonia.Threading;
 
 using FastImageViewer.Caching;
 using FastImageViewer.Configuration;
-using FastImageViewer.Diagnostics;
 using FastImageViewer.Gallery;
 using FastImageViewer.Imaging;
 using FastImageViewer.Text;
-using FastImageViewer.Threading;
 using FastImageViewer.Ui;
 
 namespace FastImageViewer.Presentation;
@@ -25,10 +22,8 @@ namespace FastImageViewer.Presentation;
 internal sealed class MainController : IDisposable
 {
     private readonly WarmthMode _mode;
-    private readonly PerformanceLogger _logger;
     private readonly ImagePresenter _presenter;
     private readonly ImageCachePipeline _cachePipeline;
-    private IReadOnlyList<ImageEntry> _entries = [];
     private GalleryNavigator? _navigator;
     private ScreenMetrics _screenMetrics;
     private CancellationTokenSource? _displayCancellationTokenSource;
@@ -44,19 +39,15 @@ internal sealed class MainController : IDisposable
 
     public MainController(
         WarmthMode mode,
-        PerformanceLogger logger,
         ImagePresenter presenter)
     {
         _mode = mode;
-        _logger = logger;
         _presenter = presenter;
 
         var distributed = new AkavacheDistributedCacheAdapter(CacheDatabase.LocalMachine);
         var fusionCache = FusionCacheFactory.Create(distributed);
         _cachePipeline = new ImageCachePipeline(
             fusionCache,
-            distributed,
-            logger,
             mode);
     }
 
@@ -81,13 +72,13 @@ internal sealed class MainController : IDisposable
                 () => ScreenMetricsProvider.GetPrimaryMetrics(topLevel),
                 DispatcherPriority.MaxValue,
                 cancellationToken);
-        _entries = await GalleryScanner.ScanAsync(cancellationToken);
-        _navigator = new GalleryNavigator(_entries);
+        var entries = await GalleryScanner.ScanAsync(cancellationToken);
+        _navigator = new GalleryNavigator(entries);
         _initialized = true;
 
         UpdateState(cancellationToken);
 
-        if (_entries.Count == 0)
+        if (entries.Count == 0)
         {
             return;
         }
@@ -107,7 +98,7 @@ internal sealed class MainController : IDisposable
                 });
 
                 await _cachePipeline.WarmAllAsync(
-                    _entries,
+                    entries,
                     _screenMetrics,
                     progress,
                     cancellationToken);
@@ -178,6 +169,11 @@ internal sealed class MainController : IDisposable
 
     public async Task ToggleOriginalAsync(CancellationToken cancellationToken)
     {
+        if (_mode == WarmthMode.Cold)
+        {
+            return;
+        }
+
         if (_currentEntry is null)
         {
             return;
@@ -195,7 +191,6 @@ internal sealed class MainController : IDisposable
 
                 _lastPresented = PresentationKind.Original;
                 await PresentAsync(
-                    _currentEntry,
                     _currentOriginal,
                     cancellationToken);
 
@@ -218,7 +213,6 @@ internal sealed class MainController : IDisposable
 
             _lastPresented = PresentationKind.Reduced;
             await PresentAsync(
-                _currentEntry,
                 _currentReduced,
                 cancellationToken);
             UpdateState(cancellationToken);
@@ -286,11 +280,8 @@ internal sealed class MainController : IDisposable
                     _currentReduced = reduced;
                     _lastPresented = PresentationKind.Reduced;
                     await PresentAsync(
-                        entry,
                         reduced,
                         cancellationToken);
-
-                    WarmNeighbors(cancellationToken);
 
                     UpdateState(cancellationToken);
 
@@ -304,14 +295,8 @@ internal sealed class MainController : IDisposable
             _currentOriginal = original;
             _lastPresented = PresentationKind.Original;
             await PresentAsync(
-                entry,
                 original,
                 cancellationToken);
-
-            if (_mode != WarmthMode.Cold)
-            {
-                WarmNeighbors(cancellationToken);
-            }
 
             UpdateState(cancellationToken);
         }
@@ -330,44 +315,11 @@ internal sealed class MainController : IDisposable
     }
 
     private async Task PresentAsync(
-        ImageEntry entry,
         ImageDataResult data,
         CancellationToken cancellationToken)
     {
-        const string PerformanceOperationName = "Display";
-
-        var stopwatch = Stopwatch.StartNew();
         await _presenter.ShowAsync(
             data.Bytes,
-            cancellationToken);
-        stopwatch.Stop();
-
-        _logger.LogDuration(
-            new PerformanceMeasureInput(
-                PerformanceOperationName,
-                entry.FileName,
-                data.Source,
-                _mode),
-            data.Metadata,
-            stopwatch.Elapsed.TotalMilliseconds);
-    }
-
-    private void WarmNeighbors(CancellationToken cancellationToken)
-    {
-        if ((_mode == WarmthMode.Cold) ||
-            (_navigator is null))
-        {
-            return;
-        }
-
-        var task = _cachePipeline.WarmNeighborsAsync(
-            _entries,
-            _navigator.CurrentIndex,
-            _screenMetrics,
-            cancellationToken);
-
-        FireAndForget.RunAsync(
-            task,
             cancellationToken);
     }
 
@@ -403,12 +355,13 @@ internal sealed class MainController : IDisposable
             return;
         }
 
-        var canToggle = _lastPresented switch
-        {
-            PresentationKind.Reduced => _currentEntry is not null,
-            PresentationKind.Original => _currentReduced is not null,
-            _ => false,
-        };
+        var canToggle = (_mode != WarmthMode.Cold) &&
+            _lastPresented switch
+            {
+                PresentationKind.Reduced => _currentEntry is not null,
+                PresentationKind.Original => _currentReduced is not null,
+                _ => false,
+            };
         var toggleText = _lastPresented == PresentationKind.Original
             ? NonAllocationStrings.ToggleShowReduced
             : NonAllocationStrings.ToggleShowOriginal;
@@ -465,7 +418,9 @@ internal sealed class MainController : IDisposable
 
     private void HandleError(Exception exception)
     {
-        _logger.LogBackgroundError(exception);
+        Console
+            .Error
+            .WriteLine($"{exception.Message}\n{exception}");
         _isLoading = false;
         _errorMessage = $"{exception.Message}\n\n{exception}";
         UpdateState(default);

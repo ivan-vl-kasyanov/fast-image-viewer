@@ -14,9 +14,11 @@ using Akavache.SystemTextJson;
 using Avalonia;
 
 using FastImageViewer.Configuration;
-using FastImageViewer.Diagnostics;
 
 using ReactiveUI.Avalonia;
+
+using Serilog;
+using Serilog.Events;
 
 namespace FastImageViewer;
 
@@ -27,25 +29,41 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        var parseResult = WarmthModeParser.Parse(args);
-        var cacheDirectory = AppPaths.CacheDirectory;
-
-        if (parseResult.Mode == WarmthMode.Clean)
+        var logInitialized = ConfigureLogging();
+        if (!logInitialized)
         {
-            RunCleanMode(cacheDirectory);
-
             return;
         }
 
-        ConfigureCache(cacheDirectory);
+        try
+        {
+            var parseResult = WarmthModeParser.Parse(args);
+            var cacheDirectory = AppPaths.CacheDirectory;
 
-        AppStartupContext.SetMode(parseResult.Mode);
+            if (parseResult.Mode == WarmthMode.Clean)
+            {
+                RunCleanMode(cacheDirectory);
 
-        using var logger = PerformanceLogger.Create(parseResult.Mode);
-        AppStartupContext.SetLogger(logger);
+                return;
+            }
 
-        BuildAvaloniaApp()
-            .StartWithClassicDesktopLifetime(parseResult.RemainingArgs);
+            ConfigureCache(cacheDirectory);
+
+            AppStartupContext.SetMode(parseResult.Mode);
+
+            BuildAvaloniaApp()
+                .StartWithClassicDesktopLifetime(parseResult.RemainingArgs);
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(
+                ex,
+                "Unhandled fatal error in application entry point.");
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+        }
     }
 
     private static AppBuilder BuildAvaloniaApp()
@@ -109,9 +127,9 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            Console
-                .Error
-                .WriteLine($"Failed to invalidate cache entries: {ex.Message}");
+            Log.Error(
+                ex,
+                "Failed to invalidate cache entries.");
         }
 
         try
@@ -125,9 +143,43 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            Console
-                .Error
-                .WriteLine($"Failed to delete cache directory '{cacheDirectory}': {ex.Message}");
+            Log.Error(
+                ex,
+                "Failed to delete cache directory \"{CacheDirectory}\".",
+                cacheDirectory);
+        }
+    }
+
+    private static bool ConfigureLogging()
+    {
+        try
+        {
+            var logFilePath = Path.Combine(
+                AppPaths.CacheDirectory,
+                AppConstants.LogFileName);
+
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.Console(LogEventLevel.Information)
+                .WriteTo.File(
+                    logFilePath,
+                    fileSizeLimitBytes: 1_048_576,
+                    restrictedToMinimumLevel: LogEventLevel.Warning,
+                    rollingInterval: RollingInterval.Month,
+                    rollOnFileSizeLimit: true,
+                    retainedFileCountLimit: 3,
+                    shared: true)
+                .CreateLogger();
+
+            Log.Information("Program starting...");
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.Write(ex);
+            Console.ReadKey();
+
+            return false;
         }
     }
 }

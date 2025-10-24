@@ -10,7 +10,6 @@ internal static class WarmthModeParser
     public static WarmthParseResult Parse(string[] args)
     {
         const string ParameterNameMode = "--mode=";
-        const string ParameterNameModeCool = "cool";
         const string ParameterNameModeHot = "hot";
         const string ParameterNameModeClean = "clean";
 
@@ -30,7 +29,6 @@ internal static class WarmthModeParser
                 var value = argument[7..].Trim();
                 mode = value.ToLowerInvariant() switch
                 {
-                    ParameterNameModeCool => WarmthMode.Cool,
                     ParameterNameModeHot => WarmthMode.Hot,
                     ParameterNameModeClean => WarmthMode.Clean,
                     _ => WarmthMode.Cold,
