@@ -11,6 +11,10 @@ internal static class AppConstants
 
     public const string GalleryFolderName = "Gallery";
 
+    public const string CacheFolderName = "Cache";
+
+    public const string LocalMachineCacheFileName = "LocalMachine.db";
+
     public const string GalleryReadmeFileName = "README.gallery.txt";
 
     public const string GalleryReadmeContent = "Copy images into this folder to browse them with FastImageViewer.";

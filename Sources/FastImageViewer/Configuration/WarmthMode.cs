@@ -12,4 +12,6 @@ internal enum WarmthMode
     Cool,
 
     Hot,
+
+    Clean,
 }

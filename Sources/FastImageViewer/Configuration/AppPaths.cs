@@ -9,6 +9,7 @@ internal static class AppPaths
 {
     private static readonly Lock _syncRoot = new();
     private static string? _galleryDirectory;
+    private static string? _cacheDirectory;
 
     public static string GalleryDirectory
     {
@@ -47,6 +48,39 @@ internal static class AppPaths
                 _galleryDirectory = root;
 
                 return _galleryDirectory;
+            }
+        }
+    }
+
+    public static string CacheDirectory
+    {
+        get
+        {
+            if ((_cacheDirectory is not null) &&
+                Directory.Exists(_cacheDirectory))
+            {
+                return _cacheDirectory;
+            }
+
+            lock (_syncRoot)
+            {
+                if ((_cacheDirectory is not null) &&
+                    Directory.Exists(_cacheDirectory))
+                {
+                    return _cacheDirectory!;
+                }
+
+                var root = Path.Combine(
+                    AppContext.BaseDirectory,
+                    AppConstants.CacheFolderName);
+                if (!Directory.Exists(root))
+                {
+                    Directory.CreateDirectory(root);
+                }
+
+                _cacheDirectory = root;
+
+                return _cacheDirectory;
             }
         }
     }

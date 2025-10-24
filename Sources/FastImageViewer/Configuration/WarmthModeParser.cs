@@ -12,6 +12,7 @@ internal static class WarmthModeParser
         const string ParameterNameMode = "--mode=";
         const string ParameterNameModeCool = "cool";
         const string ParameterNameModeHot = "hot";
+        const string ParameterNameModeClean = "clean";
 
         if (args.Length == 0)
         {
@@ -31,6 +32,7 @@ internal static class WarmthModeParser
                 {
                     ParameterNameModeCool => WarmthMode.Cool,
                     ParameterNameModeHot => WarmthMode.Hot,
+                    ParameterNameModeClean => WarmthMode.Clean,
                     _ => WarmthMode.Cold,
                 };
             }
