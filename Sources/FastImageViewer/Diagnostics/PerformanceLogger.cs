@@ -104,6 +104,7 @@ internal sealed class PerformanceLogger : IDisposable
             "Background operation failed");
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         _logger.Dispose();

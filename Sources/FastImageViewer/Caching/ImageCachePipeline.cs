@@ -75,10 +75,17 @@ internal sealed class ImageCachePipeline(
 
         if (!entry.IsDiskCacheEligible)
         {
-            return null;
+            return _mode == WarmthMode.Cool
+                ? throw CreateMissingL2Exception(entry)
+                : null;
         }
 
         var key = entry.CacheKey;
+        if (_mode == WarmthMode.Cold)
+        {
+            return null;
+        }
+
         var l1Watch = Stopwatch.StartNew();
         var maybe = await _fusionCache.TryGetAsync<byte[]>(
             key,
@@ -139,6 +146,11 @@ internal sealed class ImageCachePipeline(
                 true);
         }
 
+        if (_mode == WarmthMode.Cool)
+        {
+            throw CreateMissingL2Exception(entry);
+        }
+
         var created = await _logger.MeasureAsync(
             new PerformanceMeasureInput(
                 PerformanceOperationName,
@@ -183,32 +195,35 @@ internal sealed class ImageCachePipeline(
         const string PerformanceOperationName = "Original";
 
         var key = entry.CacheKey + AppConstants.OriginalCacheSuffix;
-        var l1Watch = Stopwatch.StartNew();
-        var maybe = await _fusionCache.TryGetAsync<byte[]>(
-            key,
-            _originalOptions,
-            cancellationToken);
-        l1Watch.Stop();
-
-        if (maybe.HasValue)
+        if (_mode != WarmthMode.Cold)
         {
-            var metadata = EnsureMetadata(
+            var l1Watch = Stopwatch.StartNew();
+            var maybe = await _fusionCache.TryGetAsync<byte[]>(
                 key,
-                maybe.Value);
-            _logger.LogDuration(
-                new PerformanceMeasureInput(
-                    PerformanceOperationName,
-                    entry.FileName,
-                    NonAllocationStrings.SourceL1,
-                    _mode),
-                metadata,
-                l1Watch.Elapsed.TotalMilliseconds);
+                _originalOptions,
+                cancellationToken);
+            l1Watch.Stop();
 
-            return new ImageDataResult(
-                maybe.Value,
-                metadata,
-                NonAllocationStrings.SourceL1,
-                false);
+            if (maybe.HasValue)
+            {
+                var metadata = EnsureMetadata(
+                    key,
+                    maybe.Value);
+                _logger.LogDuration(
+                    new PerformanceMeasureInput(
+                        PerformanceOperationName,
+                        entry.FileName,
+                        NonAllocationStrings.SourceL1,
+                        _mode),
+                    metadata,
+                    l1Watch.Elapsed.TotalMilliseconds);
+
+                return new ImageDataResult(
+                    maybe.Value,
+                    metadata,
+                    NonAllocationStrings.SourceL1,
+                    false);
+            }
         }
 
         var data = await _logger.MeasureAsync(
@@ -229,11 +244,14 @@ internal sealed class ImageCachePipeline(
             });
 
         _metadataCache[key] = data.Metadata;
-        await _fusionCache.SetAsync(
-            key,
-            data.Bytes,
-            _originalOptions,
-            cancellationToken);
+        if (_mode != WarmthMode.Cold)
+        {
+            await _fusionCache.SetAsync(
+                key,
+                data.Bytes,
+                _originalOptions,
+                cancellationToken);
+        }
 
         return new ImageDataResult(
             data.Bytes,
@@ -245,32 +263,50 @@ internal sealed class ImageCachePipeline(
     public async Task WarmAllAsync(
         IReadOnlyList<ImageEntry> entries,
         ScreenMetrics metrics,
+        IProgress<double>? progress,
         CancellationToken cancellationToken)
     {
+        if (_mode == WarmthMode.Cold)
+        {
+            progress?.Report(1);
+
+            return;
+        }
+
+        var eligible = new List<ImageEntry>(entries.Count);
         foreach (var entry in entries)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (!entry.IsDiskCacheEligible)
+            if (entry.IsDiskCacheEligible)
             {
-                continue;
+                eligible.Add(entry);
             }
+        }
+
+        if (eligible.Count == 0)
+        {
+            progress?.Report(1);
+
+            return;
+        }
+
+        var processed = 0;
+        foreach (var entry in eligible)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
 
             await EnsureDistributedAsync(
                 entry,
                 metrics,
                 cancellationToken);
+
+            processed++;
+            progress?.Report((double)processed / eligible.Count);
         }
 
         long budget = 0;
-        foreach (var entry in entries)
+        foreach (var entry in eligible)
         {
             cancellationToken.ThrowIfCancellationRequested();
-
-            if (!entry.IsDiskCacheEligible)
-            {
-                continue;
-            }
 
             if (budget >= AppConstants.PreloadRamBudgetBytes)
             {
@@ -288,6 +324,8 @@ internal sealed class ImageCachePipeline(
 
             budget += result.Bytes.Length;
         }
+
+        progress?.Report(1);
     }
 
     public async Task WarmNeighborsAsync(
@@ -296,6 +334,11 @@ internal sealed class ImageCachePipeline(
         ScreenMetrics metrics,
         CancellationToken cancellationToken)
     {
+        if (_mode == WarmthMode.Cold)
+        {
+            return;
+        }
+
         for (var offset = 1; offset <= AppConstants.NeighborWarmCount; offset++)
         {
             var previousIndex = currentIndex - offset;
@@ -370,6 +413,12 @@ internal sealed class ImageCachePipeline(
             created.Bytes,
             _distributedOptions,
             cancellationToken);
+    }
+
+    private static InvalidOperationException CreateMissingL2Exception(ImageEntry entry)
+    {
+        return new InvalidOperationException(
+            $"L2 cache entry was not found for '{entry.FileName}'.");
     }
 
     private ImageMetadata EnsureMetadata(

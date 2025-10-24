@@ -12,4 +12,6 @@ internal sealed record ViewerState(
     string ToggleButtonContent,
     string WindowTitle,
     bool IsLoading,
+    bool IsCaching,
+    double CachingProgress,
     string? ErrorMessage);

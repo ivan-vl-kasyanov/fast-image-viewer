@@ -38,6 +38,8 @@ internal sealed class MainController : IDisposable
     private PresentationKind _lastPresented = PresentationKind.None;
     private bool _initialized;
     private bool _isLoading;
+    private bool _isCaching;
+    private double _cachingProgress;
     private string? _errorMessage;
 
     public MainController(
@@ -92,10 +94,30 @@ internal sealed class MainController : IDisposable
 
         if (_mode == WarmthMode.Hot)
         {
-            await _cachePipeline.WarmAllAsync(
-                _entries,
-                _screenMetrics,
-                cancellationToken);
+            _isCaching = true;
+            _cachingProgress = 0;
+            UpdateState(cancellationToken);
+
+            try
+            {
+                var progress = new Progress<double>(value =>
+                {
+                    _cachingProgress = value;
+                    UpdateState(cancellationToken);
+                });
+
+                await _cachePipeline.WarmAllAsync(
+                    _entries,
+                    _screenMetrics,
+                    progress,
+                    cancellationToken);
+            }
+            finally
+            {
+                _isCaching = false;
+                _cachingProgress = 0;
+                UpdateState(cancellationToken);
+            }
         }
 
         await ShowEntryAsync(
@@ -215,6 +237,7 @@ internal sealed class MainController : IDisposable
         }
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         CancelCurrent();
@@ -284,17 +307,11 @@ internal sealed class MainController : IDisposable
                 entry,
                 original,
                 cancellationToken);
-            if ((_mode == WarmthMode.Cold) &&
-                entry.IsDiskCacheEligible)
-            {
-                FireAndForget.RunAsync(
-                    EnsureCurrentReducedAsync(
-                        entry,
-                        cancellationToken),
-                    cancellationToken);
-            }
 
-            WarmNeighbors(cancellationToken);
+            if (_mode != WarmthMode.Cold)
+            {
+                WarmNeighbors(cancellationToken);
+            }
 
             UpdateState(cancellationToken);
         }
@@ -309,27 +326,6 @@ internal sealed class MainController : IDisposable
         finally
         {
             EndLoading(cancellationToken);
-        }
-    }
-
-    private async Task EnsureCurrentReducedAsync(
-        ImageEntry entry,
-        CancellationToken cancellationToken)
-    {
-        var reduced = await _cachePipeline.GetReducedAsync(
-            entry,
-            _screenMetrics,
-            cancellationToken);
-        if (reduced is null)
-        {
-            return;
-        }
-
-        if ((_currentEntry is not null) &&
-            string.Equals(_currentEntry.CacheKey, entry.CacheKey, StringComparison.Ordinal))
-        {
-            _currentReduced = reduced;
-            UpdateState(cancellationToken);
         }
     }
 
@@ -358,24 +354,21 @@ internal sealed class MainController : IDisposable
 
     private void WarmNeighbors(CancellationToken cancellationToken)
     {
-        if (_navigator is null)
+        if ((_mode == WarmthMode.Cold) ||
+            (_navigator is null))
         {
             return;
         }
 
-        if ((_mode == WarmthMode.Cool) ||
-            (_mode == WarmthMode.Hot))
-        {
-            var task = _cachePipeline.WarmNeighborsAsync(
-                _entries,
-                _navigator.CurrentIndex,
-                _screenMetrics,
-                cancellationToken);
+        var task = _cachePipeline.WarmNeighborsAsync(
+            _entries,
+            _navigator.CurrentIndex,
+            _screenMetrics,
+            cancellationToken);
 
-            FireAndForget.RunAsync(
-                task,
-                cancellationToken);
-        }
+        FireAndForget.RunAsync(
+            task,
+            cancellationToken);
     }
 
     private void CancelCurrent()
@@ -403,6 +396,8 @@ internal sealed class MainController : IDisposable
                 NonAllocationStrings.ToggleShowOriginal,
                 NonAllocationStrings.WindowTitleFallback,
                 _isLoading,
+                _isCaching,
+                _cachingProgress,
                 _errorMessage));
 
             return;
@@ -418,16 +413,26 @@ internal sealed class MainController : IDisposable
             ? NonAllocationStrings.ToggleShowReduced
             : NonAllocationStrings.ToggleShowOriginal;
         var title = _currentEntry?.FileName ?? NonAllocationStrings.WindowTitleFallback;
+        var canMoveBackward = _navigator.CanMovePrevious;
+        var canMoveForward = _navigator.CanMoveNext;
+        if (_isCaching)
+        {
+            canToggle = false;
+            canMoveBackward = false;
+            canMoveForward = false;
+        }
 
         cancellationToken.ThrowIfCancellationRequested();
 
         PublishState(new ViewerState(
-            _navigator.CanMovePrevious,
-            _navigator.CanMoveNext,
+            canMoveBackward,
+            canMoveForward,
             canToggle,
             toggleText,
             title,
             _isLoading,
+            _isCaching,
+            _cachingProgress,
             _errorMessage));
     }
 

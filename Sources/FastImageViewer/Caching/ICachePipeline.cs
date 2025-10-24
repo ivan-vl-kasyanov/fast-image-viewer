@@ -21,6 +21,7 @@ internal interface ICachePipeline
     Task WarmAllAsync(
         IReadOnlyList<ImageEntry> entries,
         ScreenMetrics metrics,
+        IProgress<double>? progress,
         CancellationToken cancellationToken);
 
     Task WarmNeighborsAsync(

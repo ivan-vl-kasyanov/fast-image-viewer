@@ -85,10 +85,8 @@
   <Target Name="PostBuildCleanup" AfterTargets="PostBuildEvent" Condition="'$(Configuration)'=='Release'">
     <ItemGroup>
       <XmlFiles Include="$(OutputPath)*.xml" />
-      <DepsJsonFiles Include="$(OutputPath)*.deps.json" />
     </ItemGroup>
     <Delete Files="@(XmlFiles)" />
-    <Delete Files="@(DepsJsonFiles)" />
   </Target>
 
   <ItemGroup>

@@ -32,11 +32,6 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
         string key,
         CancellationToken token = default)
     {
-        if (!_options.ContainsKey(key))
-        {
-            return null;
-        }
-
         try
         {
             return await _blobCache
@@ -45,6 +40,10 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
         }
         catch (KeyNotFoundException)
         {
+            _options.TryRemove(
+                key,
+                out _);
+
             return null;
         }
     }

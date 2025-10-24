@@ -31,6 +31,26 @@
           </StackPanel>
         </Border>
 
+        <Border x:Name="CachingContainer"
+                Background="#80000000"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                IsHitTestVisible="False"
+                Opacity="0">
+          <StackPanel HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      Spacing="12">
+            <ProgressBar x:Name="CachingProgressBar"
+                          Width="200"
+                          Minimum="0"
+                          Maximum="1"
+                          Value="0" />
+            <TextBlock Text="Caching..."
+                       Foreground="White"
+                       HorizontalAlignment="Center" />
+          </StackPanel>
+        </Border>
+
         <Border x:Name="ErrorContainer"
                 Background="#C0000000"
                 HorizontalAlignment="Stretch"

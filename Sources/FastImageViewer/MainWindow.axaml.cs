@@ -23,6 +23,8 @@ internal sealed partial class MainWindow : Window
     private const string ButtonForwardName = "ForwardButton";
     private const string ButtonToggleOriginalName = "ToggleOriginalButton";
     private const string LoadingContainerName = "LoadingContainer";
+    private const string CachingContainerName = "CachingContainer";
+    private const string CachingProgressBarName = "CachingProgressBar";
     private const string ErrorContainerName = "ErrorContainer";
     private const string ErrorTextBlockName = "ErrorTextBlock";
 
@@ -32,6 +34,8 @@ internal sealed partial class MainWindow : Window
     private readonly Button _forwardButton;
     private readonly Button _toggleOriginalButton;
     private readonly Border _loadingContainer;
+    private readonly Border _cachingContainer;
+    private readonly ProgressBar _cachingProgressBar;
     private readonly Border _errorContainer;
     private readonly TextBlock _errorTextBlock;
 
@@ -53,6 +57,10 @@ internal sealed partial class MainWindow : Window
             ?? throw new InvalidOperationException($"{ButtonToggleOriginalName} control not found.");
         _loadingContainer = this.FindControl<Border>(LoadingContainerName)
             ?? throw new InvalidOperationException($"{LoadingContainerName} control not found.");
+        _cachingContainer = this.FindControl<Border>(CachingContainerName)
+            ?? throw new InvalidOperationException($"{CachingContainerName} control not found.");
+        _cachingProgressBar = this.FindControl<ProgressBar>(CachingProgressBarName)
+            ?? throw new InvalidOperationException($"{CachingProgressBarName} control not found.");
         _errorContainer = this.FindControl<Border>(ErrorContainerName)
             ?? throw new InvalidOperationException($"{ErrorContainerName} control not found.");
         _errorTextBlock = this.FindControl<TextBlock>(ErrorTextBlockName)
@@ -149,6 +157,17 @@ internal sealed partial class MainWindow : Window
         _toggleOriginalButton.Content = state.ToggleButtonContent;
         Title = state.WindowTitle;
         _loadingContainer.Opacity = state.IsLoading ? 1 : 0;
+        _cachingContainer.Opacity = state.IsCaching ? 1 : 0;
+        var cachingProgress = state.CachingProgress;
+        if (cachingProgress < 0)
+        {
+            cachingProgress = 0;
+        }
+        else if (cachingProgress > 1)
+        {
+            cachingProgress = 1;
+        }
+        _cachingProgressBar.Value = cachingProgress;
         _errorTextBlock.Text = state.ErrorMessage ?? string.Empty;
         var hasError = !string.IsNullOrEmpty(state.ErrorMessage);
         _errorContainer.Opacity = hasError ? 1 : 0;
