@@ -179,6 +179,7 @@ internal sealed class MainController : IDisposable
             return;
         }
 
+        var displayToken = StartDisplayOperation(cancellationToken);
         BeginLoading(cancellationToken);
 
         try
@@ -187,12 +188,12 @@ internal sealed class MainController : IDisposable
             {
                 _currentOriginal ??= await _cachePipeline.GetOriginalAsync(
                     _currentEntry,
-                    cancellationToken);
+                    displayToken);
 
                 _lastPresented = PresentationKind.Original;
                 await PresentAsync(
                     _currentOriginal,
-                    cancellationToken);
+                    displayToken);
 
                 UpdateState(cancellationToken);
 
@@ -204,7 +205,7 @@ internal sealed class MainController : IDisposable
                 _currentReduced = await _cachePipeline.GetReducedAsync(
                     _currentEntry,
                     _screenMetrics,
-                    cancellationToken);
+                    displayToken);
                 if (_currentReduced is null)
                 {
                     return;
@@ -214,7 +215,7 @@ internal sealed class MainController : IDisposable
             _lastPresented = PresentationKind.Reduced;
             await PresentAsync(
                 _currentReduced,
-                cancellationToken);
+                displayToken);
             UpdateState(cancellationToken);
         }
         catch (OperationCanceledException)
@@ -245,7 +246,7 @@ internal sealed class MainController : IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        CancelCurrent();
+        var displayToken = StartDisplayOperation(cancellationToken);
         BeginLoading(cancellationToken);
 
         try
@@ -253,9 +254,9 @@ internal sealed class MainController : IDisposable
             if (entry is null)
             {
                 await _presenter
-                    .ClearAsync(cancellationToken)
+                    .ClearAsync(displayToken)
                     .ToObservable()
-                    .ToTask(cancellationToken);
+                    .ToTask(displayToken);
 
                 _currentEntry = null;
                 _currentReduced = null;
@@ -274,14 +275,14 @@ internal sealed class MainController : IDisposable
                 var reduced = await _cachePipeline.GetReducedAsync(
                     entry,
                     _screenMetrics,
-                    cancellationToken);
+                    displayToken);
                 if (reduced is not null)
                 {
                     _currentReduced = reduced;
                     _lastPresented = PresentationKind.Reduced;
                     await PresentAsync(
                         reduced,
-                        cancellationToken);
+                        displayToken);
 
                     UpdateState(cancellationToken);
 
@@ -291,12 +292,12 @@ internal sealed class MainController : IDisposable
 
             var original = await _cachePipeline.GetOriginalAsync(
                 entry,
-                cancellationToken);
+                displayToken);
             _currentOriginal = original;
             _lastPresented = PresentationKind.Original;
             await PresentAsync(
                 original,
-                cancellationToken);
+                displayToken);
 
             UpdateState(cancellationToken);
         }
@@ -321,6 +322,16 @@ internal sealed class MainController : IDisposable
         await _presenter.ShowAsync(
             data.Bytes,
             cancellationToken);
+    }
+
+    private CancellationToken StartDisplayOperation(CancellationToken cancellationToken)
+    {
+        CancelCurrent();
+
+        var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _displayCancellationTokenSource = source;
+
+        return source.Token;
     }
 
     private void CancelCurrent()
