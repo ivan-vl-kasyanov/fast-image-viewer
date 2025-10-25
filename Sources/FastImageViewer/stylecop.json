@@ -9,7 +9,7 @@
         "licenseName": "GNU Affero General Public License Version 3",
         "licenseFile": "LICENSE"
       },
-      "copyrightText": "© {year} {companyName}.\nThis software is licensed under {licenseName}. See {licenseFile} for details."
+      "copyrightText": "© {year} {companyName}.\nThis software is licensed under the {licenseName}. See {licenseFile} for details."
     },
     "layoutRules": {
       "newlineAtEndOfFile": "omit"

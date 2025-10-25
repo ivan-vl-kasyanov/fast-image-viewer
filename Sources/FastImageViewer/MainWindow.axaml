@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FastImageViewer.MainWindow"
+        Width="900"
+        Height="600"
+        Title="Fast Image Viewer">
+  <Grid RowDefinitions="*,Auto">
+    <Border Margin="8"
+            Background="#202020">
+      <Grid>
+        <Image x:Name="DisplayImage"
+               Stretch="Uniform"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center" />
+
+        <Border x:Name="LoadingContainer"
+                Background="#80000000"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                IsHitTestVisible="False"
+                Opacity="0">
+          <StackPanel HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      Spacing="12">
+            <ProgressBar Width="200"
+                          IsIndeterminate="True" />
+            <TextBlock Text="Loading..."
+                       Foreground="White"
+                       HorizontalAlignment="Center" />
+          </StackPanel>
+        </Border>
+
+        <Border x:Name="CachingContainer"
+                Background="#80000000"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                IsHitTestVisible="False"
+                Opacity="0">
+          <StackPanel HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      Spacing="12">
+            <ProgressBar x:Name="CachingProgressBar"
+                          Width="200"
+                          Minimum="0"
+                          Maximum="1"
+                          Value="0" />
+            <TextBlock Text="Caching..."
+                       Foreground="White"
+                       HorizontalAlignment="Center" />
+          </StackPanel>
+        </Border>
+
+        <Border x:Name="ErrorContainer"
+                Background="#C0000000"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Padding="16"
+                CornerRadius="4"
+                IsHitTestVisible="False"
+                Opacity="0">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+            <TextBlock x:Name="ErrorTextBlock"
+                       Foreground="White"
+                       FontSize="14"
+                       TextWrapping="Wrap" />
+          </ScrollViewer>
+        </Border>
+      </Grid>
+    </Border>
+
+    <StackPanel Grid.Row="1"
+                Orientation="Horizontal"
+                HorizontalAlignment="Center"
+                Margin="8"
+                Spacing="12">
+      <Button x:Name="CloseButton"
+              Content="Close"
+              Width="120" />
+      <Button x:Name="BackwardButton"
+              Content="Backward"
+              Width="120" />
+      <Button x:Name="ForwardButton"
+              Content="Forward"
+              Width="120" />
+      <Button x:Name="ToggleOriginalButton"
+              Content="Show Original"
+              Width="160" />
+    </StackPanel>
+  </Grid>
+</Window>
