@@ -229,9 +229,63 @@ internal sealed class ImageCachePipeline(
         }
 
         var processed = 0;
+        long budget = 0;
+        var pending = new List<ImageEntry>(eligible.Count);
         foreach (var entry in eligible)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                var key = entry.CacheKey;
+                var existing = await _fusionCache.TryGetAsync<byte[]>(
+                    key,
+                    _cacheOptions,
+                    cancellationToken);
+
+                if (existing.HasValue)
+                {
+                    EnsureMetadata(
+                        key,
+                        existing.Value);
+                    processed++;
+                    progress?.Report((double)processed / eligible.Count);
+
+                    budget += existing.Value.Length;
+                    if (budget >= AppConstants.PreloadRamBudgetBytes)
+                    {
+                        progress?.Report(1);
+
+                        return;
+                    }
+
+                    continue;
+                }
+
+                pending.Add(entry);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                LogBackgroundError(
+                    ex,
+                    entry.CacheKey);
+
+                pending.Add(entry);
+            }
+        }
+
+        foreach (var entry in pending)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (budget >= AppConstants.PreloadRamBudgetBytes)
+            {
+                break;
+            }
 
             try
             {
@@ -255,6 +309,8 @@ internal sealed class ImageCachePipeline(
                     bytes);
                 processed++;
                 progress?.Report((double)processed / eligible.Count);
+
+                budget += bytes.Length;
             }
             catch (OperationCanceledException)
             {
@@ -265,41 +321,6 @@ internal sealed class ImageCachePipeline(
                 LogBackgroundError(
                     ex,
                     entry.CacheKey);
-            }
-        }
-
-        long budget = 0;
-        var cacheKeys = eligible.Select(entry => entry.CacheKey);
-        foreach (var key in cacheKeys)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
-            {
-                var existing = await _fusionCache.TryGetAsync<byte[]>(
-                    key,
-                    _cacheOptions,
-                    cancellationToken);
-                if (!existing.HasValue)
-                {
-                    continue;
-                }
-
-                budget += existing.Value.Length;
-                if (budget >= AppConstants.PreloadRamBudgetBytes)
-                {
-                    break;
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                LogBackgroundError(
-                    ex,
-                    key);
             }
         }
 

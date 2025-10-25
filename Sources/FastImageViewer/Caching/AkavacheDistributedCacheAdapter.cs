@@ -63,10 +63,12 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
 
         var expiration = ResolveExpiration(key);
 
-        _blobCache.InsertObject(
-            key,
-            value,
-            expiration);
+        WaitForCompletion(_blobCache
+            .InsertObject(
+                key,
+                value,
+                expiration)
+            .ToTask());
     }
 
     /// <inheritdoc/>
@@ -85,7 +87,10 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
         _options.TryRemove(
             key,
             out _);
-        _blobCache.Invalidate(key);
+
+        WaitForCompletion(_blobCache
+            .Invalidate(key)
+            .ToTask());
     }
 
     /// <inheritdoc/>
@@ -113,10 +118,12 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
 
         _options[key] = snapshot;
 
-        _blobCache.InsertObject(
-            key,
-            value,
-            expiration);
+        WaitForCompletion(_blobCache
+            .InsertObject(
+                key,
+                value,
+                expiration)
+            .ToTask());
     }
 
     /// <inheritdoc/>
@@ -161,6 +168,13 @@ internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : ID
                     : DateTimeOffset
                         .UtcNow
                         .AddDays(DefaultCacheExpirationTimeout));
+    }
+
+    private static void WaitForCompletion(Task task)
+    {
+        task
+            .GetAwaiter()
+            .GetResult();
     }
 
     private DateTimeOffset? ResolveExpiration(string key)
