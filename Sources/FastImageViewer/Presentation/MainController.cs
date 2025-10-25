@@ -14,11 +14,13 @@ using FastImageViewer.Caching;
 using FastImageViewer.Configuration;
 using FastImageViewer.Gallery;
 using FastImageViewer.Imaging;
-using FastImageViewer.Text;
 using FastImageViewer.Ui;
 
 namespace FastImageViewer.Presentation;
 
+/// <summary>
+/// Coordinates gallery navigation, caching, and presentation logic.
+/// </summary>
 internal sealed class MainController : IDisposable
 {
     private readonly WarmthMode _mode;
@@ -37,6 +39,11 @@ internal sealed class MainController : IDisposable
     private double _cachingProgress;
     private string? _errorMessage;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MainController"/> class.
+    /// </summary>
+    /// <param name="mode">The current warm-up mode.</param>
+    /// <param name="presenter">The presenter responsible for showing images.</param>
     public MainController(
         WarmthMode mode,
         ImagePresenter presenter)
@@ -51,10 +58,23 @@ internal sealed class MainController : IDisposable
             mode);
     }
 
+    /// <summary>
+    /// Occurs when the controller requests application shutdown.
+    /// </summary>
     public event Action? CloseRequested;
 
+    /// <summary>
+    /// Occurs when the viewer state has changed.
+    /// </summary>
     public event Action<ViewerState>? StateChanged;
 
+    /// <summary>
+    /// Initializes the controller and loads the initial gallery state.
+    /// </summary>
+    /// <param name="topLevel">The owning window used to query screen metrics.</param>
+    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
+    /// <returns>A task that completes when initialization finishes.</returns>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     public async Task InitializeAsync(
         TopLevel topLevel,
         CancellationToken cancellationToken)
@@ -117,11 +137,18 @@ internal sealed class MainController : IDisposable
             cancellationToken);
     }
 
+    /// <summary>
+    /// Requests that the hosting application close.
+    /// </summary>
     public void RequestApplicationExit()
     {
         CloseRequested?.Invoke();
     }
 
+    /// <summary>
+    /// Clears the current error message if one is present.
+    /// </summary>
+    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
     public void ClearError(CancellationToken cancellationToken)
     {
         if (_errorMessage is null)
@@ -133,6 +160,12 @@ internal sealed class MainController : IDisposable
         UpdateState(cancellationToken);
     }
 
+    /// <summary>
+    /// Advances to the next gallery entry when available.
+    /// </summary>
+    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
+    /// <returns>A task that completes when navigation finishes.</returns>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     public async Task MoveForwardAsync(CancellationToken cancellationToken)
     {
         if (_navigator is null)
@@ -150,6 +183,12 @@ internal sealed class MainController : IDisposable
             cancellationToken);
     }
 
+    /// <summary>
+    /// Moves to the previous gallery entry when available.
+    /// </summary>
+    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
+    /// <returns>A task that completes when navigation finishes.</returns>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     public async Task MoveBackwardAsync(CancellationToken cancellationToken)
     {
         if (_navigator is null)
@@ -167,6 +206,12 @@ internal sealed class MainController : IDisposable
             cancellationToken);
     }
 
+    /// <summary>
+    /// Toggles between reduced and original image presentations.
+    /// </summary>
+    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
+    /// <returns>A task that completes when toggling finishes.</returns>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     public async Task ToggleOriginalAsync(CancellationToken cancellationToken)
     {
         if (_mode == WarmthMode.Cold)
@@ -356,8 +401,8 @@ internal sealed class MainController : IDisposable
                 false,
                 false,
                 false,
-                NonAllocationStrings.ToggleShowOriginal,
-                NonAllocationStrings.WindowTitleFallback,
+                AppConstants.ToggleShowOriginal,
+                AppConstants.WindowTitleFallback,
                 _isLoading,
                 _isCaching,
                 _cachingProgress,
@@ -374,9 +419,9 @@ internal sealed class MainController : IDisposable
                 _ => false,
             };
         var toggleText = _lastPresented == PresentationKind.Original
-            ? NonAllocationStrings.ToggleShowReduced
-            : NonAllocationStrings.ToggleShowOriginal;
-        var title = _currentEntry?.FileName ?? NonAllocationStrings.WindowTitleFallback;
+            ? AppConstants.ToggleShowReduced
+            : AppConstants.ToggleShowOriginal;
+        var title = _currentEntry?.FileName ?? AppConstants.WindowTitleFallback;
         var canMoveBackward = _navigator.CanMovePrevious;
         var canMoveForward = _navigator.CanMoveNext;
         if (_isCaching)

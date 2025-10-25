@@ -9,8 +9,19 @@ using ImageMagick;
 
 namespace FastImageViewer.Imaging;
 
+/// <summary>
+/// Creates reduced-size variants of images suitable for quick display.
+/// </summary>
 internal static class ImageReducer
 {
+    /// <summary>
+    /// Generates a reduced image for the specified entry and target metrics.
+    /// </summary>
+    /// <param name="entry">The image entry describing the source file.</param>
+    /// <param name="metrics">The target screen metrics used to compute scaling.</param>
+    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
+    /// <returns>A task that provides the reduced image data.</returns>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     public static Task<ImageData> CreateReducedAsync(
         ImageEntry entry,
         ScreenMetrics metrics,

@@ -14,6 +14,9 @@ using FastImageViewer.Ui;
 
 namespace FastImageViewer;
 
+/// <summary>
+/// Represents the main application window hosting the image viewer UI.
+/// </summary>
 internal sealed partial class MainWindow : Window
 {
     private const string ImageDisplayName = "DisplayImage";
@@ -38,6 +41,10 @@ internal sealed partial class MainWindow : Window
     private readonly Border _errorContainer;
     private readonly TextBlock _errorTextBlock;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MainWindow"/> class.
+    /// </summary>
+    /// <param name="mode">The warm-up mode determining startup behavior.</param>
     public MainWindow(
         WarmthMode mode)
     {
@@ -153,8 +160,13 @@ internal sealed partial class MainWindow : Window
         _toggleOriginalButton.IsEnabled = state.CanToggleOriginal;
         _toggleOriginalButton.Content = state.ToggleButtonContent;
         Title = state.WindowTitle;
-        _loadingContainer.Opacity = state.IsLoading ? 1 : 0;
-        _cachingContainer.Opacity = state.IsCaching ? 1 : 0;
+        _loadingContainer.Opacity = state.IsLoading
+            ? 1
+            : 0;
+        _cachingContainer.Opacity = state.IsCaching
+            ? 1
+            : 0;
+
         var cachingProgress = state.CachingProgress;
         if (cachingProgress < 0)
         {
@@ -164,10 +176,13 @@ internal sealed partial class MainWindow : Window
         {
             cachingProgress = 1;
         }
+
         _cachingProgressBar.Value = cachingProgress;
         _errorTextBlock.Text = state.ErrorMessage ?? string.Empty;
-        var hasError = !string.IsNullOrEmpty(state.ErrorMessage);
-        _errorContainer.Opacity = hasError ? 1 : 0;
+        var hasError = !string.IsNullOrWhiteSpace(state.ErrorMessage);
+        _errorContainer.Opacity = hasError
+            ? 1
+            : 0;
         _errorContainer.IsHitTestVisible = hasError;
     }
 }

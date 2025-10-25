@@ -5,10 +5,19 @@
 
 namespace FastImageViewer.Imaging;
 
+/// <summary>
+/// Describes the dimensions and DPI of an image.
+/// </summary>
+/// <param name="Width">The pixel width of the image.</param>
+/// <param name="Height">The pixel height of the image.</param>
+/// <param name="Dpi">The DPI reported by the source.</param>
 internal readonly record struct ImageMetadata(
     int Width,
     int Height,
     double Dpi)
 {
+    /// <summary>
+    /// Gets a placeholder metadata instance that indicates unknown dimensions.
+    /// </summary>
     public static ImageMetadata Unknown { get; } = new(0, 0, 0d);
 }

@@ -9,8 +9,16 @@ using FastImageViewer.Configuration;
 
 namespace FastImageViewer.Imaging;
 
+/// <summary>
+/// Supplies screen metrics for rendering decisions.
+/// </summary>
 internal static class ScreenMetricsProvider
 {
+    /// <summary>
+    /// Gets the screen metrics for the primary display.
+    /// </summary>
+    /// <param name="topLevel">The top-level window requesting the metrics.</param>
+    /// <returns>The metrics describing the primary display.</returns>
     public static ScreenMetrics GetPrimaryMetrics(TopLevel topLevel)
     {
         var screen = topLevel.Screens?.Primary;

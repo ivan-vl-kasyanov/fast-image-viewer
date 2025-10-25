@@ -10,8 +10,17 @@ using FastImageViewer.Imaging;
 
 namespace FastImageViewer.Gallery;
 
+/// <summary>
+/// Scans the gallery directory for available images.
+/// </summary>
 internal static class GalleryScanner
 {
+    /// <summary>
+    /// Scans the gallery directory and builds image entries.
+    /// </summary>
+    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
+    /// <returns>A task that provides the ordered gallery entries.</returns>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     public static Task<IReadOnlyList<ImageEntry>> ScanAsync(CancellationToken cancellationToken)
     {
         return Task.Run(

@@ -5,8 +5,16 @@
 
 namespace FastImageViewer.Configuration;
 
+/// <summary>
+/// Provides utilities for parsing the application warm-up mode.
+/// </summary>
 internal static class WarmthModeParser
 {
+    /// <summary>
+    /// Parses the command-line arguments for a requested <see cref="WarmthMode"/>.
+    /// </summary>
+    /// <param name="args">The command-line arguments to inspect.</param>
+    /// <returns>The parsed warm-up mode and remaining arguments.</returns>
     public static WarmthParseResult Parse(string[] args)
     {
         const string ParameterNameMode = "--mode=";

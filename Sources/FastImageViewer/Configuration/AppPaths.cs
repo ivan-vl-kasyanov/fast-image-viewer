@@ -5,12 +5,19 @@
 
 namespace FastImageViewer.Configuration;
 
+/// <summary>
+/// Provides lazily initialized application paths for gallery and cache content.
+/// </summary>
 internal static class AppPaths
 {
     private static readonly Lock _syncRoot = new();
     private static string? _galleryDirectory;
     private static string? _cacheDirectory;
 
+    /// <summary>
+    /// Gets the path to the gallery directory, creating it and its README file if needed.
+    /// </summary>
+    /// <returns>The absolute path to the gallery directory.</returns>
     public static string GalleryDirectory
     {
         get
@@ -52,6 +59,10 @@ internal static class AppPaths
         }
     }
 
+    /// <summary>
+    /// Gets the path to the cache directory, creating it if necessary.
+    /// </summary>
+    /// <returns>The absolute path to the cache directory.</returns>
     public static string CacheDirectory
     {
         get

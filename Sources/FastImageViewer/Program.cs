@@ -22,10 +22,17 @@ using Serilog.Events;
 
 namespace FastImageViewer;
 
+/// <summary>
+/// Provides the entry point for the Fast Image Viewer application.
+/// </summary>
 [SupportedOSPlatform("windows")]
 [SupportedOSPlatform("linux")]
 internal static class Program
 {
+    /// <summary>
+    /// Starts the application with the provided command-line arguments.
+    /// </summary>
+    /// <param name="args">The command-line arguments supplied to the process.</param>
     [STAThread]
     public static void Main(string[] args)
     {

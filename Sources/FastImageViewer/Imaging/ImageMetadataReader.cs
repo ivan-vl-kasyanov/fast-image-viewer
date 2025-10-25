@@ -9,8 +9,16 @@ using ImageMagick;
 
 namespace FastImageViewer.Imaging;
 
+/// <summary>
+/// Extracts image metadata from encoded image bytes.
+/// </summary>
 internal static class ImageMetadataReader
 {
+    /// <summary>
+    /// Reads <see cref="ImageMetadata"/> from encoded image bytes.
+    /// </summary>
+    /// <param name="bytes">The encoded image to inspect.</param>
+    /// <returns>The metadata describing the image.</returns>
     internal static ImageMetadata FromBytes(byte[] bytes)
     {
         using var stream = new MemoryStream(

@@ -5,6 +5,12 @@
 
 namespace FastImageViewer.Imaging;
 
+/// <summary>
+/// Describes screen characteristics used when rendering images.
+/// </summary>
+/// <param name="Width">The width of the usable screen area in pixels.</param>
+/// <param name="Height">The height of the usable screen area in pixels.</param>
+/// <param name="Dpi">The effective DPI of the display.</param>
 internal readonly record struct ScreenMetrics(
     int Width,
     int Height,

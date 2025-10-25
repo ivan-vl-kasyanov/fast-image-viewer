@@ -5,8 +5,18 @@
 
 namespace FastImageViewer.Imaging;
 
+/// <summary>
+/// Provides helpers for validating dimension values.
+/// </summary>
 internal static class DimensionExtensions
 {
+    /// <summary>
+    /// Ensures that a <see cref="double"/> dimension fits within the <see cref="int"/> range.
+    /// </summary>
+    /// <param name="dimension">The dimension value to validate.</param>
+    /// <param name="propertyName">The name of the associated property.</param>
+    /// <returns>The validated dimension converted to <see cref="int"/>.</returns>
+    /// <exception cref="OverflowException">Thrown when the dimension exceeds the <see cref="int"/> range.</exception>
     public static int EnsureDimensionWithinInt32Range(
         this double dimension,
         string propertyName)
@@ -17,6 +27,13 @@ internal static class DimensionExtensions
             : Convert.ToInt32(dimension);
     }
 
+    /// <summary>
+    /// Ensures that a <see cref="uint"/> dimension fits within the <see cref="int"/> range.
+    /// </summary>
+    /// <param name="dimension">The dimension value to validate.</param>
+    /// <param name="propertyName">The name of the associated property.</param>
+    /// <returns>The validated dimension converted to <see cref="int"/>.</returns>
+    /// <exception cref="OverflowException">Thrown when the dimension exceeds the <see cref="int"/> range.</exception>
     public static int EnsureDimensionWithinInt32Range(
         this uint dimension,
         string propertyName)

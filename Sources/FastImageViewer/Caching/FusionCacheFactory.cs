@@ -12,6 +12,9 @@ using ZiggyCreatures.Caching.Fusion.Serialization.SystemTextJson;
 
 namespace FastImageViewer.Caching;
 
+/// <summary>
+/// Creates configured instances of <see cref="IFusionCache"/>.
+/// </summary>
 internal static class FusionCacheFactory
 {
     private const int CacheDurationMinutes = 15;
@@ -24,6 +27,11 @@ internal static class FusionCacheFactory
     private static readonly TimeSpan _failSafeDuration = TimeSpan.FromHours(FailSafeDurationHours);
     private static readonly TimeSpan _distributedCacheDuration = TimeSpan.FromDays(DistributedCacheDurationDays);
 
+    /// <summary>
+    /// Creates a configured <see cref="IFusionCache"/> backed by the provided distributed cache.
+    /// </summary>
+    /// <param name="distributedCache">The distributed cache used for persistence.</param>
+    /// <returns>The configured fusion cache instance.</returns>
     internal static IFusionCache Create(IDistributedCache distributedCache)
     {
         var options = new FusionCacheOptions

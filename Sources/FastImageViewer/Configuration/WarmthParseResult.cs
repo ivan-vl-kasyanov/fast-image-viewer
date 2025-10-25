@@ -5,6 +5,11 @@
 
 namespace FastImageViewer.Configuration;
 
+/// <summary>
+/// Represents the parsed warm-up mode and remaining command-line arguments.
+/// </summary>
+/// <param name="Mode">The parsed <see cref="WarmthMode"/> value.</param>
+/// <param name="RemainingArgs">The command-line arguments that were not consumed.</param>
 internal sealed record WarmthParseResult(
     WarmthMode Mode,
     string[] RemainingArgs);

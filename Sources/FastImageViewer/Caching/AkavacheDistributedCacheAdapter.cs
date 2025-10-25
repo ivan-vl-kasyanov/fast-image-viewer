@@ -12,6 +12,10 @@ using Microsoft.Extensions.Caching.Distributed;
 
 namespace FastImageViewer.Caching;
 
+/// <summary>
+/// Adapts an <see cref="IBlobCache"/> instance to the <see cref="IDistributedCache"/> contract.
+/// </summary>
+/// <param name="blobCache">The underlying Akavache blob cache.</param>
 internal sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : IDistributedCache
 {
     private const int DefaultCacheExpirationTimeout = 14;

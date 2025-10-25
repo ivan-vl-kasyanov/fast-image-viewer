@@ -9,6 +9,9 @@ using FastImageViewer.Configuration;
 
 namespace FastImageViewer.Imaging;
 
+/// <summary>
+/// Provides helpers for reasoning about image file extensions.
+/// </summary>
 internal static class ImageFormatHelper
 {
     private static readonly ImmutableHashSet<string> _complicatedImageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -52,6 +55,13 @@ internal static class ImageFormatHelper
         ".avif",
     }.ToImmutableHashSet();
 
+    /// <summary>
+    /// Determines whether the specified extension is supported by the viewer.
+    /// </summary>
+    /// <param name="extension">The extension to evaluate.</param>
+    /// <returns>
+    /// <c>true</c> if the extension is supported; otherwise, <c>false</c>.
+    /// </returns>
     internal static bool IsSupported(this string extension)
     {
         return
@@ -59,11 +69,28 @@ internal static class ImageFormatHelper
             _complicatedImageExtensions.Contains(extension);
     }
 
+    /// <summary>
+    /// Determines whether the specified extension requires additional processing.
+    /// </summary>
+    /// <param name="extension">The extension to evaluate.</param>
+    /// <returns>
+    /// <c>true</c> if the extension is considered complicated; otherwise,
+    /// <c>false</c>.
+    /// </returns>
     internal static bool IsComplicated(this string extension)
     {
         return _complicatedImageExtensions.Contains(extension);
     }
 
+    /// <summary>
+    /// Determines whether an image qualifies for disk caching based on extension and size.
+    /// </summary>
+    /// <param name="extension">The extension associated with the image.</param>
+    /// <param name="length">The image size in bytes.</param>
+    /// <returns>
+    /// <c>true</c> if the image should be cached on disk; otherwise,
+    /// <c>false</c>.
+    /// </returns>
     internal static bool IsDiskCacheEligible(
         this string extension,
         long length)

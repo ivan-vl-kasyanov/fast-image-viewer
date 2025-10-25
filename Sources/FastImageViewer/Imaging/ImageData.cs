@@ -5,6 +5,11 @@
 
 namespace FastImageViewer.Imaging;
 
+/// <summary>
+/// Holds image bytes paired with the associated metadata.
+/// </summary>
+/// <param name="Bytes">The encoded image data.</param>
+/// <param name="Metadata">The metadata describing the image dimensions.</param>
 internal sealed record ImageData(
     byte[] Bytes,
     ImageMetadata Metadata);

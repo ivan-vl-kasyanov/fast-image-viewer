@@ -5,8 +5,16 @@
 
 namespace FastImageViewer.Threading;
 
+/// <summary>
+/// Provides helpers for fire-and-forget task execution.
+/// </summary>
 internal static class FireAndForget
 {
+    /// <summary>
+    /// Safely observes failures for the supplied task without awaiting it.
+    /// </summary>
+    /// <param name="task">The task to monitor.</param>
+    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
     public static void RunAsync(
         Task task,
         CancellationToken cancellationToken)

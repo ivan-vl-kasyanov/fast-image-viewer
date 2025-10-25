@@ -7,7 +7,6 @@ using System.Collections.Concurrent;
 
 using FastImageViewer.Configuration;
 using FastImageViewer.Imaging;
-using FastImageViewer.Text;
 
 using Serilog;
 
@@ -15,6 +14,11 @@ using ZiggyCreatures.Caching.Fusion;
 
 namespace FastImageViewer.Caching;
 
+/// <summary>
+/// Implements image caching logic across memory and distributed caches.
+/// </summary>
+/// <param name="fusionCache">The fusion cache used to store image data.</param>
+/// <param name="mode">The current warm-up mode.</param>
 internal sealed class ImageCachePipeline(
     IFusionCache fusionCache,
     WarmthMode mode) : ICachePipeline
@@ -53,6 +57,16 @@ internal sealed class ImageCachePipeline(
         DistributedCacheDuration = TimeSpan.Zero,
     };
 
+    /// <summary>
+    /// Retrieves a reduced image from cache or generates it when necessary.
+    /// </summary>
+    /// <param name="entry">The image entry identifying the source image.</param>
+    /// <param name="metrics">The screen metrics used to size the reduced image.</param>
+    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
+    /// <returns>
+    /// The cached or newly generated reduced image, or <c>null</c> when not applicable.
+    /// </returns>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     public async Task<ImageDataResult?> GetReducedAsync(
         ImageEntry entry,
         ScreenMetrics metrics,
@@ -89,7 +103,7 @@ internal sealed class ImageCachePipeline(
             return new ImageDataResult(
                 bytes,
                 metadata,
-                NonAllocationStrings.SourceCache,
+                AppConstants.SourceCache,
                 true);
         }
         catch (OperationCanceledException)
@@ -106,6 +120,14 @@ internal sealed class ImageCachePipeline(
         }
     }
 
+    /// <summary>
+    /// Retrieves the original image from cache or loads it from disk.
+    /// </summary>
+    /// <param name="entry">The image entry identifying the source image.</param>
+    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
+    /// <returns>The cached or newly loaded original image data.</returns>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
+    /// <exception cref="InvalidOperationException"> Thrown when the original image cannot be loaded.</exception>
     public async Task<ImageDataResult> GetOriginalAsync(
         ImageEntry entry,
         CancellationToken cancellationToken)
@@ -123,7 +145,7 @@ internal sealed class ImageCachePipeline(
                 return new ImageDataResult(
                     data.Bytes,
                     data.Metadata,
-                    NonAllocationStrings.SourceOriginal,
+                    AppConstants.SourceOriginal,
                     false);
             }
 
@@ -147,7 +169,7 @@ internal sealed class ImageCachePipeline(
             return new ImageDataResult(
                 bytes,
                 metadata,
-                NonAllocationStrings.SourceCache,
+                AppConstants.SourceCache,
                 false);
         }
         catch (OperationCanceledException)
@@ -166,6 +188,17 @@ internal sealed class ImageCachePipeline(
         }
     }
 
+    /// <summary>
+    /// Warms the cache by pre-loading eligible reduced images.
+    /// </summary>
+    /// <param name="entries">The entries to process.</param>
+    /// <param name="metrics">The screen metrics used to size reduced images.</param>
+    /// <param name="progress">
+    /// The progress reporter for cache warming completion.
+    /// </param>
+    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
+    /// <returns>A task that completes when warming finishes.</returns>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     public async Task WarmAllAsync(
         IReadOnlyList<ImageEntry> entries,
         ScreenMetrics metrics,

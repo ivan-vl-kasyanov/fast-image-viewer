@@ -9,12 +9,23 @@ using Avalonia.Threading;
 
 namespace FastImageViewer.Ui;
 
+/// <summary>
+/// Presents bitmap images within an <see cref="Image"/> control.
+/// </summary>
+/// <param name="target">The target control that displays images.</param>
 internal sealed class ImagePresenter(Image target) : IDisposable
 {
     private readonly Image _target = target;
 
     private Bitmap? _current;
 
+    /// <summary>
+    /// Displays the supplied image bytes on the associated control.
+    /// </summary>
+    /// <param name="bytes">The encoded image bytes to display.</param>
+    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
+    /// <returns>A task that completes when the image is shown.</returns>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     public Task ShowAsync(
         byte[] bytes,
         CancellationToken cancellationToken)
@@ -30,6 +41,12 @@ internal sealed class ImagePresenter(Image target) : IDisposable
             .GetTask();
     }
 
+    /// <summary>
+    /// Clears the displayed image.
+    /// </summary>
+    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
+    /// <returns>A task that completes when the control is cleared.</returns>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     public Task ClearAsync(CancellationToken cancellationToken)
     {
         return Dispatcher
@@ -41,6 +58,7 @@ internal sealed class ImagePresenter(Image target) : IDisposable
             .GetTask();
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         _current?.Dispose();

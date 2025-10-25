@@ -11,13 +11,18 @@ using FastImageViewer.Configuration;
 
 namespace FastImageViewer;
 
+/// <summary>
+/// Represents the Avalonia application definition and initialization logic.
+/// </summary>
 internal sealed class App : Application
 {
+    /// <inheritdoc/>
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
     }
 
+    /// <inheritdoc/>
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktopLifetime)
