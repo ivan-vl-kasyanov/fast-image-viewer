@@ -37,6 +37,8 @@
 ### StyleCop analyzers
 - The repository uses StyleCop Analyzers with the default rule set. Expect warnings and/or errors for violations of documentation, layout, ordering, readability, maintainability, naming, and spacing rules (SA1xxx–SA7xxx categories). Ensure new code compiles cleanly under these analyzers.
 - Customized StyleCop settings require omitting trailing newlines at the end of files and keeping using directives outside namespaces (`orderingRules.usingDirectivesPlacement = outsideNamespace`).
+### SonarCube analyzers
+- The repository uses `SonarAnalyzer.CSharp` with the default rule set. Expect warnings and/or errors for violations of documentation, layout, ordering, readability, maintainability, naming, and spacing rules (Sxxxx categories). Ensure new code compiles cleanly under these analyzers.
 
 ## Dev environment tips
 

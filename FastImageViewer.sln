@@ -11,11 +11,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 		.gitignore = .gitignore
+		AGENTS.md = AGENTS.md
 		LICENSE = LICENSE
 		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastImageViewer", "Sources\FastImageViewer\FastImageViewer.csproj", "{69E6B7FA-EEFB-499C-93A9-CEF3483798A4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastImageViewer.Cache", "Sources\FastImageViewer.Cache\FastImageViewer.Cache.csproj", "{025462DC-8D75-4CE2-A493-7AB7CDA42804}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastImageViewer.ImageProcessing", "Sources\FastImageViewer.ImageProcessing\FastImageViewer.ImageProcessing.csproj", "{09218590-BF61-4F5F-B8AB-08628E61DCBC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastImageViewer.Viewer.Ui", "Sources\FastImageViewer.Viewer.Ui\FastImageViewer.Viewer.Ui.csproj", "{9E9C7D6B-C3A3-4A8C-A5DA-704FA7B52949}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,12 +37,33 @@ Global
 		{69E6B7FA-EEFB-499C-93A9-CEF3483798A4}.Release|x64.Build.0 = Release|x64
 		{69E6B7FA-EEFB-499C-93A9-CEF3483798A4}.ReleasePublish|x64.ActiveCfg = ReleasePublish|x64
 		{69E6B7FA-EEFB-499C-93A9-CEF3483798A4}.ReleasePublish|x64.Build.0 = ReleasePublish|x64
+		{025462DC-8D75-4CE2-A493-7AB7CDA42804}.Debug|x64.ActiveCfg = Debug|x64
+		{025462DC-8D75-4CE2-A493-7AB7CDA42804}.Debug|x64.Build.0 = Debug|x64
+		{025462DC-8D75-4CE2-A493-7AB7CDA42804}.Release|x64.ActiveCfg = Release|x64
+		{025462DC-8D75-4CE2-A493-7AB7CDA42804}.Release|x64.Build.0 = Release|x64
+		{025462DC-8D75-4CE2-A493-7AB7CDA42804}.ReleasePublish|x64.ActiveCfg = ReleasePublish|x64
+		{025462DC-8D75-4CE2-A493-7AB7CDA42804}.ReleasePublish|x64.Build.0 = ReleasePublish|x64
+		{09218590-BF61-4F5F-B8AB-08628E61DCBC}.Debug|x64.ActiveCfg = Debug|x64
+		{09218590-BF61-4F5F-B8AB-08628E61DCBC}.Debug|x64.Build.0 = Debug|x64
+		{09218590-BF61-4F5F-B8AB-08628E61DCBC}.Release|x64.ActiveCfg = Release|x64
+		{09218590-BF61-4F5F-B8AB-08628E61DCBC}.Release|x64.Build.0 = Release|x64
+		{09218590-BF61-4F5F-B8AB-08628E61DCBC}.ReleasePublish|x64.ActiveCfg = ReleasePublish|x64
+		{09218590-BF61-4F5F-B8AB-08628E61DCBC}.ReleasePublish|x64.Build.0 = ReleasePublish|x64
+		{9E9C7D6B-C3A3-4A8C-A5DA-704FA7B52949}.Debug|x64.ActiveCfg = Debug|x64
+		{9E9C7D6B-C3A3-4A8C-A5DA-704FA7B52949}.Debug|x64.Build.0 = Debug|x64
+		{9E9C7D6B-C3A3-4A8C-A5DA-704FA7B52949}.Release|x64.ActiveCfg = Release|x64
+		{9E9C7D6B-C3A3-4A8C-A5DA-704FA7B52949}.Release|x64.Build.0 = Release|x64
+		{9E9C7D6B-C3A3-4A8C-A5DA-704FA7B52949}.ReleasePublish|x64.ActiveCfg = ReleasePublish|x64
+		{9E9C7D6B-C3A3-4A8C-A5DA-704FA7B52949}.ReleasePublish|x64.Build.0 = ReleasePublish|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{69E6B7FA-EEFB-499C-93A9-CEF3483798A4} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{025462DC-8D75-4CE2-A493-7AB7CDA42804} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{09218590-BF61-4F5F-B8AB-08628E61DCBC} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{9E9C7D6B-C3A3-4A8C-A5DA-704FA7B52949} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0BE591A4-8A72-4406-BF8B-90BA49CA89FD}

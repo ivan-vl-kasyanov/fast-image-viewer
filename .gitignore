@@ -429,3 +429,6 @@ FodyWeavers.xsd
 
 # Solution XML documentation files
 FastImageViewer.xml
+FastImageViewer.Cache.xml
+FastImageViewer.ImageProcessing.xml
+FastImageViewer.Viewer.Ui.xml
