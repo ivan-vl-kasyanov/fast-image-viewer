@@ -55,6 +55,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FastImageViewer.ImageProcessing\FastImageViewer.ImageProcessing.csproj" />
+    <ProjectReference Include="..\FastImageViewer.Shared\FastImageViewer.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="SonarAnalyzer.CSharp" Version="10.15.0.120848">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
