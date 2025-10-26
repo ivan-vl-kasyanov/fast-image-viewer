@@ -9,7 +9,7 @@
     <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
     <NeutralLanguage>en-US</NeutralLanguage>
     <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
-    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
     <AnalysisLevel>latest</AnalysisLevel>
     <DebugSymbols>True</DebugSymbols>
     <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
