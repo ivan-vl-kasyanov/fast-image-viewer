@@ -431,4 +431,6 @@ FodyWeavers.xsd
 FastImageViewer.xml
 FastImageViewer.Cache.xml
 FastImageViewer.ImageProcessing.xml
+FastImageViewer.Resources.xml
+FastImageViewer.Shared.xml
 FastImageViewer.Viewer.Ui.xml

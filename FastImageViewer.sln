@@ -24,6 +24,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastImageViewer.ImageProces
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastImageViewer.Viewer.Ui", "Sources\FastImageViewer.Viewer.Ui\FastImageViewer.Viewer.Ui.csproj", "{9E9C7D6B-C3A3-4A8C-A5DA-704FA7B52949}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastImageViewer.Shared", "Sources\FastImageViewer.Shared\FastImageViewer.Shared.csproj", "{0A6D2819-54AF-4C06-BA73-D823271C24F8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastImageViewer.Resources", "Sources\FastImageViewer.Resources\FastImageViewer.Resources.csproj", "{B62E02F2-AC06-45DE-BDEC-5D43418264BA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -55,6 +59,18 @@ Global
 		{9E9C7D6B-C3A3-4A8C-A5DA-704FA7B52949}.Release|x64.Build.0 = Release|x64
 		{9E9C7D6B-C3A3-4A8C-A5DA-704FA7B52949}.ReleasePublish|x64.ActiveCfg = ReleasePublish|x64
 		{9E9C7D6B-C3A3-4A8C-A5DA-704FA7B52949}.ReleasePublish|x64.Build.0 = ReleasePublish|x64
+		{0A6D2819-54AF-4C06-BA73-D823271C24F8}.Debug|x64.ActiveCfg = Debug|x64
+		{0A6D2819-54AF-4C06-BA73-D823271C24F8}.Debug|x64.Build.0 = Debug|x64
+		{0A6D2819-54AF-4C06-BA73-D823271C24F8}.Release|x64.ActiveCfg = Release|x64
+		{0A6D2819-54AF-4C06-BA73-D823271C24F8}.Release|x64.Build.0 = Release|x64
+		{0A6D2819-54AF-4C06-BA73-D823271C24F8}.ReleasePublish|x64.ActiveCfg = ReleasePublish|x64
+		{0A6D2819-54AF-4C06-BA73-D823271C24F8}.ReleasePublish|x64.Build.0 = ReleasePublish|x64
+		{B62E02F2-AC06-45DE-BDEC-5D43418264BA}.Debug|x64.ActiveCfg = Debug|x64
+		{B62E02F2-AC06-45DE-BDEC-5D43418264BA}.Debug|x64.Build.0 = Debug|x64
+		{B62E02F2-AC06-45DE-BDEC-5D43418264BA}.Release|x64.ActiveCfg = Release|x64
+		{B62E02F2-AC06-45DE-BDEC-5D43418264BA}.Release|x64.Build.0 = Release|x64
+		{B62E02F2-AC06-45DE-BDEC-5D43418264BA}.ReleasePublish|x64.ActiveCfg = ReleasePublish|x64
+		{B62E02F2-AC06-45DE-BDEC-5D43418264BA}.ReleasePublish|x64.Build.0 = ReleasePublish|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -64,6 +80,8 @@ Global
 		{025462DC-8D75-4CE2-A493-7AB7CDA42804} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{09218590-BF61-4F5F-B8AB-08628E61DCBC} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{9E9C7D6B-C3A3-4A8C-A5DA-704FA7B52949} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{0A6D2819-54AF-4C06-BA73-D823271C24F8} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{B62E02F2-AC06-45DE-BDEC-5D43418264BA} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0BE591A4-8A72-4406-BF8B-90BA49CA89FD}
