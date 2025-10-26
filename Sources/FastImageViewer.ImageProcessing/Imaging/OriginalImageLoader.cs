@@ -49,7 +49,7 @@ public static class OriginalImageLoader
         var dpi = density.X > 0
             ? density.X
             : AppConstants.DefaultDpi;
-        var bytes = image.ToByteArray(MagickFormat.Png);
+        var bytes = image.ToByteArray();
         var metadata = new ImageMetadata(
             image.Width.EnsureDimensionWithinInt32Range(nameof(image.Width)),
             image.Height.EnsureDimensionWithinInt32Range(nameof(image.Height)),
