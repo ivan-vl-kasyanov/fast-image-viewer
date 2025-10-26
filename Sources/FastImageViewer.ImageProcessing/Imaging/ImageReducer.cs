@@ -22,27 +22,30 @@ public static class ImageReducer
     /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
     /// <returns>A task that provides the reduced image data.</returns>
     /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
-    public static Task<ImageData> CreateReducedAsync(
+    public static async Task<ImageData> CreateReducedAsync(
         ImageEntry entry,
         ScreenMetrics metrics,
         CancellationToken cancellationToken)
     {
-        return Task.Run(
-            () => Reduce(
-                entry,
-                metrics,
-                cancellationToken),
-            cancellationToken);
-    }
+        cancellationToken.ThrowIfCancellationRequested();
+        await using var fileStream = new FileStream(
+            entry.FullPath,
+            new FileStreamOptions
+            {
+                Access = FileAccess.Read,
+                Mode = FileMode.Open,
+                Share = FileShare.Read,
+                BufferSize = AppConstants.ImageFileReadBufferSize,
+                Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
+            });
+        cancellationToken.ThrowIfCancellationRequested();
 
-    private static ImageData Reduce(
-        ImageEntry entry,
-        ScreenMetrics metrics,
-        CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        using var image = new MagickImage(entry.FullPath);
-        cancellationToken.ThrowIfCancellationRequested();
+        using var image = new MagickImage();
+        await image
+            .ReadAsync(
+                fileStream,
+                cancellationToken)
+            .ConfigureAwait(false);
 
         var originalWidth = image.Width;
         var originalHeight = image.Height;
@@ -52,11 +55,16 @@ public static class ImageReducer
         var scaleHeight = metrics.Height > 0
             ? (double)metrics.Height / originalHeight
             : 1d;
-        var scale = Math.Min(
-            Math.Min(
-                scaleWidth,
-                scaleHeight),
-            1d);
+        var shouldResize =
+            (originalWidth > metrics.Width) ||
+            (originalHeight > metrics.Height);
+        var scale = shouldResize
+            ? Math.Min(
+                Math.Min(
+                    scaleWidth,
+                    scaleHeight),
+                1d)
+            : 1d;
         var targetWidth = Math.Max(
             1,
             (int)Math.Round(originalWidth * scale));
@@ -74,8 +82,8 @@ public static class ImageReducer
             targetDpi,
             targetDpi,
             DensityUnit.PixelsPerInch);
-        if (targetWidth != originalWidth ||
-            targetHeight != originalHeight)
+        if (shouldResize &&
+            ((targetWidth != originalWidth) || (targetHeight != originalHeight)))
         {
             image.Resize(
                 Convert.ToUInt32(targetWidth),
@@ -85,9 +93,7 @@ public static class ImageReducer
         image.Format = MagickFormat.WebP;
         image.Quality = AppConstants.ReducedQuality;
 
-        using var stream = new MemoryStream();
-        image.Write(stream);
-        var bytes = stream.ToArray();
+        var bytes = image.ToByteArray(MagickFormat.WebP);
         var metadata = new ImageMetadata(
             targetWidth,
             targetHeight,

@@ -33,7 +33,7 @@ public static class OriginalImageLoader
                 Access = FileAccess.Read,
                 Mode = FileMode.Open,
                 Share = FileShare.Read,
-                BufferSize = 4096,
+                BufferSize = AppConstants.ImageFileReadBufferSize,
                 Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
             });
         cancellationToken.ThrowIfCancellationRequested();
@@ -49,7 +49,29 @@ public static class OriginalImageLoader
         var dpi = density.X > 0
             ? density.X
             : AppConstants.DefaultDpi;
-        var bytes = image.ToByteArray();
+        image.Settings.SetDefine(
+            MagickFormat.WebP,
+            AppConstants.WebpLosslessDefineName,
+            AppConstants.WebpLosslessDefineValue);
+        image.Settings.SetDefine(
+            MagickFormat.WebP,
+            AppConstants.WebpMethodDefineName,
+            AppConstants.WebpMethodDefineValue);
+        image.Settings.SetDefine(
+            MagickFormat.WebP,
+            AppConstants.WebpAlphaQualityDefineName,
+            AppConstants.WebpAlphaQualityDefineValue);
+        var bytes = image.ToByteArray(MagickFormat.WebP);
+
+        image.Settings.RemoveDefine(
+            MagickFormat.WebP,
+            AppConstants.WebpLosslessDefineName);
+        image.Settings.RemoveDefine(
+            MagickFormat.WebP,
+            AppConstants.WebpMethodDefineName);
+        image.Settings.RemoveDefine(
+            MagickFormat.WebP,
+            AppConstants.WebpAlphaQualityDefineName);
         var metadata = new ImageMetadata(
             image.Width.EnsureDimensionWithinInt32Range(nameof(image.Width)),
             image.Height.EnsureDimensionWithinInt32Range(nameof(image.Height)),

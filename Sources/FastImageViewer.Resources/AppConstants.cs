@@ -99,4 +99,39 @@ public static class AppConstants
     /// The toggle button text for showing the reduced image.
     /// </summary>
     public const string ToggleShowReduced = "Show Reduced";
+
+    /// <summary>
+    /// The buffer size used when reading image files from disk.
+    /// </summary>
+    public const int ImageFileReadBufferSize = 16_384;
+
+    /// <summary>
+    /// The WebP define that enables lossless encoding.
+    /// </summary>
+    public const string WebpLosslessDefineName = "lossless";
+
+    /// <summary>
+    /// The value indicating that WebP lossless encoding is enabled.
+    /// </summary>
+    public const string WebpLosslessDefineValue = "true";
+
+    /// <summary>
+    /// The WebP define that selects the encoding method.
+    /// </summary>
+    public const string WebpMethodDefineName = "method";
+
+    /// <summary>
+    /// The WebP encoding method optimized for lossless compression.
+    /// </summary>
+    public const string WebpMethodDefineValue = "6";
+
+    /// <summary>
+    /// The WebP define that configures alpha channel quality.
+    /// </summary>
+    public const string WebpAlphaQualityDefineName = "alpha-quality";
+
+    /// <summary>
+    /// The alpha channel quality value that preserves full fidelity.
+    /// </summary>
+    public const string WebpAlphaQualityDefineValue = "100";
 }
