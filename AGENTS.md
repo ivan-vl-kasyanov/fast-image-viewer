@@ -42,4 +42,5 @@
 
 ## Dev environment tips
 
-Please note that the first ("cold") solution build (using `dotnet build`, for example) may take up to two minutes, even in the case of a successful build. In case of an unsuccessful build, when it is caused by errors that you cannot fix (*only* in this case), for example, by the invalid image/environment config, provide me with the **full complete** log of such a build.
+- Please note that the first ("cold") solution build (using `dotnet build`, for example) may take up to two minutes, even in the case of a successful build. In case of an unsuccessful build, when it is caused by errors that you cannot fix (*only* in this case), for example, by the invalid image/environment config, provide me with the **full complete** log of such a build.
+- You **HAVE** access to the Internet, and it is *unrestricted*.

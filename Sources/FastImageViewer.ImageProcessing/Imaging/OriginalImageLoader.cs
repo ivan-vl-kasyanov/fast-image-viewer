@@ -28,11 +28,14 @@ public static class OriginalImageLoader
         cancellationToken.ThrowIfCancellationRequested();
         await using var fileStream = new FileStream(
             entry.FullPath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            4096,
-            true);
+            new FileStreamOptions
+            {
+                Access = FileAccess.Read,
+                Mode = FileMode.Open,
+                Share = FileShare.Read,
+                BufferSize = 4096,
+                Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
+            });
         cancellationToken.ThrowIfCancellationRequested();
 
         using var image = new MagickImage();
@@ -46,15 +49,7 @@ public static class OriginalImageLoader
         var dpi = density.X > 0
             ? density.X
             : AppConstants.DefaultDpi;
-        image.Format = MagickFormat.Png;
-
-        await using var stream = new MemoryStream();
-        await image
-            .WriteAsync(
-                stream,
-                cancellationToken)
-            .ConfigureAwait(false);
-        var bytes = stream.ToArray();
+        var bytes = image.ToByteArray(MagickFormat.Png);
         var metadata = new ImageMetadata(
             image.Width.EnsureDimensionWithinInt32Range(nameof(image.Width)),
             image.Height.EnsureDimensionWithinInt32Range(nameof(image.Height)),
