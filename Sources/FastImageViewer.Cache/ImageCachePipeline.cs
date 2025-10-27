@@ -67,20 +67,11 @@ public sealed class ImageCachePipeline(
 
         try
         {
-            var bytes = await _fusionCache.GetOrSetAsync<byte[]>(
-                key,
-                async (_, token) =>
-                {
-                    var data = await ImageReducer.CreateReducedAsync(
-                        entry,
-                        metrics,
-                        token);
-                    _metadataCache[key] = data.Metadata;
-
-                    return data.Bytes;
-                },
-                _cacheOptions,
-                cancellationToken);
+            var bytes = await GetCachedReducedBytesAsync(
+                    entry,
+                    metrics,
+                    cancellationToken)
+                .ConfigureAwait(false);
             var metadata = EnsureMetadata(
                 key,
                 bytes);
@@ -158,13 +149,33 @@ public sealed class ImageCachePipeline(
         IProgress<double>? progress,
         CancellationToken cancellationToken)
     {
-        if (_mode == WarmthMode.Cold)
+        if (!ShouldWarmCache(progress))
         {
-            progress?.Report(AppNumericConstants.ProgressMaximum);
+            return;
+        }
+
+        var eligible = CollectEligibleEntries(entries);
+        if (eligible.Count == 0)
+        {
+            ReportWarmupCompletion(progress);
 
             return;
         }
 
+        var state = CreateWarmupState(
+            eligible.Count,
+            progress);
+
+        await WarmEligibleEntriesAsync(
+                eligible,
+                metrics,
+                state,
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private static List<ImageEntry> CollectEligibleEntries(IReadOnlyList<ImageEntry> entries)
+    {
         var eligible = new List<ImageEntry>(entries.Count);
         foreach (var entry in entries)
         {
@@ -174,110 +185,16 @@ public sealed class ImageCachePipeline(
             }
         }
 
-        if (eligible.Count == 0)
-        {
-            progress?.Report(AppNumericConstants.ProgressMaximum);
+        return eligible;
+    }
 
-            return;
-        }
-
-        var processed = 0;
-        long budget = 0;
-        var pending = new List<ImageEntry>(eligible.Count);
-        foreach (var entry in eligible)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
-            {
-                var key = entry.CacheKey;
-                var existing = await _fusionCache.TryGetAsync<byte[]>(
-                    key,
-                    _cacheOptions,
-                    cancellationToken);
-
-                if (existing.HasValue)
-                {
-                    EnsureMetadata(
-                        key,
-                        existing.Value);
-                    processed++;
-                    progress?.Report((double)processed / eligible.Count);
-
-                    budget += existing.Value.Length;
-                    if (budget >= AppNumericConstants.PreloadRamBudgetBytes)
-                    {
-                        progress?.Report(AppNumericConstants.ProgressMaximum);
-
-                        return;
-                    }
-
-                    continue;
-                }
-
-                pending.Add(entry);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                LogBackgroundError(
-                    ex,
-                    entry.CacheKey);
-
-                pending.Add(entry);
-            }
-        }
-
-        foreach (var entry in pending)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (budget >= AppNumericConstants.PreloadRamBudgetBytes)
-            {
-                break;
-            }
-
-            try
-            {
-                var key = entry.CacheKey;
-                var bytes = await _fusionCache.GetOrSetAsync<byte[]>(
-                    key,
-                    async (_, token) =>
-                    {
-                        var data = await ImageReducer.CreateReducedAsync(
-                            entry,
-                            metrics,
-                            token);
-                        _metadataCache[key] = data.Metadata;
-
-                        return data.Bytes;
-                    },
-                    _cacheOptions,
-                    cancellationToken);
-                EnsureMetadata(
-                    key,
-                    bytes);
-                processed++;
-                progress?.Report((double)processed / eligible.Count);
-
-                budget += bytes.Length;
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                LogBackgroundError(
-                    ex,
-                    entry.CacheKey);
-            }
-        }
-
-        progress?.Report(AppNumericConstants.ProgressMaximum);
+    private static WarmupState CreateWarmupState(
+        int total,
+        IProgress<double>? progress)
+    {
+        return new WarmupState(
+            total,
+            progress);
     }
 
     private static void LogBackgroundError(
@@ -288,6 +205,175 @@ public sealed class ImageCachePipeline(
             exception,
             "Cache pipeline error for key \"{CacheKey}\".",
             cacheKey);
+    }
+
+    private static void ReportWarmupCompletion(IProgress<double>? progress)
+    {
+        progress?.Report(AppNumericConstants.ProgressMaximum);
+    }
+
+    private bool ShouldWarmCache(IProgress<double>? progress)
+    {
+        if (_mode != WarmthMode.Cold)
+        {
+            return true;
+        }
+
+        ReportWarmupCompletion(progress);
+
+        return false;
+    }
+
+    private async Task WarmEligibleEntriesAsync(
+        IReadOnlyList<ImageEntry> eligible,
+        ScreenMetrics metrics,
+        WarmupState state,
+        CancellationToken cancellationToken)
+    {
+        var pending = await ProcessCachedEntriesAsync(
+            eligible,
+            state,
+            cancellationToken);
+
+        if (state.IsBudgetExceeded)
+        {
+            state.ReportCompletion();
+
+            return;
+        }
+
+        if (pending.Count > 0)
+        {
+            await WarmPendingEntriesAsync(
+                pending,
+                metrics,
+                state,
+                cancellationToken);
+        }
+
+        state.ReportCompletion();
+    }
+
+    private async Task<List<ImageEntry>> ProcessCachedEntriesAsync(
+        IReadOnlyList<ImageEntry> eligible,
+        WarmupState state,
+        CancellationToken cancellationToken)
+    {
+        var pending = new List<ImageEntry>(eligible.Count);
+        foreach (var entry in eligible)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                var existing = await _fusionCache.TryGetAsync<byte[]>(
+                    entry.CacheKey,
+                    _cacheOptions,
+                    cancellationToken);
+
+                if (!existing.HasValue)
+                {
+                    pending.Add(entry);
+
+                    continue;
+                }
+
+                EnsureMetadata(
+                    entry.CacheKey,
+                    existing.Value);
+
+                if (state.RegisterProcessed(existing.Value))
+                {
+                    break;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                LogBackgroundError(
+                    ex,
+                    entry.CacheKey);
+                pending.Add(entry);
+            }
+        }
+
+        return pending;
+    }
+
+    private async Task WarmPendingEntriesAsync(
+        IReadOnlyList<ImageEntry> pending,
+        ScreenMetrics metrics,
+        WarmupState state,
+        CancellationToken cancellationToken)
+    {
+        foreach (var entry in pending)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (state.IsBudgetExceeded)
+            {
+                break;
+            }
+
+            try
+            {
+                var bytes = await GetCachedReducedBytesAsync(
+                    entry,
+                    metrics,
+                    cancellationToken);
+
+                EnsureMetadata(
+                    entry.CacheKey,
+                    bytes);
+
+                if (state.RegisterProcessed(bytes))
+                {
+                    break;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                LogBackgroundError(
+                    ex,
+                    entry.CacheKey);
+            }
+        }
+    }
+
+    private ValueTask<byte[]> GetCachedReducedBytesAsync(
+        ImageEntry entry,
+        ScreenMetrics metrics,
+        CancellationToken cancellationToken)
+    {
+        return _fusionCache.GetOrSetAsync<byte[]>(
+            entry.CacheKey,
+            async (_, token) => await CreateReducedBytesAsync(
+                entry,
+                metrics,
+                token),
+            _cacheOptions,
+            cancellationToken);
+    }
+
+    private async Task<byte[]> CreateReducedBytesAsync(
+        ImageEntry entry,
+        ScreenMetrics metrics,
+        CancellationToken cancellationToken)
+    {
+        var data = await ImageReducer.CreateReducedAsync(
+            entry,
+            metrics,
+            cancellationToken);
+        _metadataCache[entry.CacheKey] = data.Metadata;
+
+        return data.Bytes;
     }
 
     private ImageMetadata EnsureMetadata(
@@ -303,5 +389,37 @@ public sealed class ImageCachePipeline(
         _metadataCache[key] = computed;
 
         return computed;
+    }
+
+    private sealed class WarmupState(
+        int total,
+        IProgress<double>? progress)
+    {
+        private readonly int _total = total;
+        private readonly IProgress<double>? _progress = progress;
+
+        public long Budget { get; private set; }
+
+        public bool IsBudgetExceeded => Budget >= AppNumericConstants.PreloadRamBudgetBytes;
+
+        private int Processed { get; set; }
+
+        public bool RegisterProcessed(byte[] bytes)
+        {
+            Processed++;
+            if (_total > 0)
+            {
+                _progress?.Report((double)Processed / _total);
+            }
+
+            Budget += bytes.LongLength;
+
+            return IsBudgetExceeded;
+        }
+
+        public void ReportCompletion()
+        {
+            _progress?.Report(AppNumericConstants.ProgressMaximum);
+        }
     }
 }

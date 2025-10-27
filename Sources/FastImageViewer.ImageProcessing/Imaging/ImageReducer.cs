@@ -27,37 +27,73 @@ public static class ImageReducer
         ScreenMetrics metrics,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        await using var fileStream = new FileStream(
-            entry.FullPath,
-            new FileStreamOptions
-            {
-                Access = FileAccess.Read,
-                Mode = FileMode.Open,
-                Share = FileShare.Read,
-                BufferSize = AppNumericConstants.ImageFileReadBufferSize,
-                Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
-            });
-        cancellationToken.ThrowIfCancellationRequested();
-
-        using var image = new MagickImage();
-        await image
-            .ReadAsync(
-                fileStream,
+        return await MagickImageLoader
+            .WithImageAsync(
+                entry,
+                CreateReducedProcessor(metrics),
                 cancellationToken)
             .ConfigureAwait(false);
+    }
 
+    private static Func<MagickImage, CancellationToken, ImageData> CreateReducedProcessor(
+        ScreenMetrics metrics)
+    {
+        return (image, cancellationToken) => CreateReducedImage(
+            image,
+            metrics,
+            cancellationToken);
+    }
+
+    private static ImageData CreateReducedImage(
+        MagickImage image,
+        ScreenMetrics metrics,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var (targetWidth, targetHeight, shouldResize) = DetermineTargetDimensions(
+            image,
+            metrics);
+        var targetDpi = DetermineTargetDpi(
+            image,
+            metrics);
+
+        ApplyTargetDensity(
+            image,
+            targetDpi);
+        ResizeIfRequired(
+            image,
+            targetWidth,
+            targetHeight,
+            shouldResize);
+        ConfigureReducedEncoding(image);
+
+        var bytes = EncodeReducedImage(image);
+        var metadata = CreateMetadata(
+            targetWidth,
+            targetHeight,
+            targetDpi);
+
+        return new ImageData(
+            bytes,
+            metadata);
+    }
+
+    private static (int TargetWidth, int TargetHeight, bool ShouldResize) DetermineTargetDimensions(
+        MagickImage image,
+        ScreenMetrics metrics)
+    {
         var originalWidth = image.Width;
         var originalHeight = image.Height;
+        var shouldResize =
+            (originalWidth > metrics.Width) ||
+            (originalHeight > metrics.Height);
         var scaleWidth = metrics.Width > 0
             ? (double)metrics.Width / originalWidth
             : AppNumericConstants.IdentityScaleFactor;
         var scaleHeight = metrics.Height > 0
             ? (double)metrics.Height / originalHeight
             : AppNumericConstants.IdentityScaleFactor;
-        var shouldResize =
-            (originalWidth > metrics.Width) ||
-            (originalHeight > metrics.Height);
         var scale = shouldResize
             ? Math.Min(
                 Math.Min(
@@ -71,36 +107,77 @@ public static class ImageReducer
         var targetHeight = Math.Max(
             AppNumericConstants.MinimumImageDimension,
             (int)Math.Round(originalHeight * scale));
-        var originalDensity = image.Density ?? new Density(AppNumericConstants.DefaultDpi);
-        var originalDpi = originalDensity.X > 0
-            ? originalDensity.X
+
+        return (targetWidth, targetHeight, shouldResize);
+    }
+
+    private static double DetermineTargetDpi(
+        MagickImage image,
+        ScreenMetrics metrics)
+    {
+        var density = image.Density ?? new Density(AppNumericConstants.DefaultDpi);
+        var originalDpi = density.X > 0
+            ? density.X
             : AppNumericConstants.DefaultDpi;
-        var targetDpi = Math.Min(
-            originalDpi,
-            metrics.Dpi > 0 ? metrics.Dpi : AppNumericConstants.DefaultDpi);
+        var requestedDpi = metrics.Dpi > 0
+            ? metrics.Dpi
+            : AppNumericConstants.DefaultDpi;
+
+        return Math.Min(originalDpi, requestedDpi);
+    }
+
+    private static void ApplyTargetDensity(
+        MagickImage image,
+        double targetDpi)
+    {
         image.Density = new Density(
             targetDpi,
             targetDpi,
             DensityUnit.PixelsPerInch);
-        if (shouldResize &&
-            ((targetWidth != originalWidth) || (targetHeight != originalHeight)))
+    }
+
+    private static void ResizeIfRequired(
+        MagickImage image,
+        int targetWidth,
+        int targetHeight,
+        bool shouldResize)
+    {
+        if (!shouldResize)
         {
-            image.Resize(
-                Convert.ToUInt32(targetWidth),
-                Convert.ToUInt32(targetHeight));
+            return;
         }
 
+        var originalWidth = image.Width;
+        var originalHeight = image.Height;
+        if ((targetWidth == originalWidth) && (targetHeight == originalHeight))
+        {
+            return;
+        }
+
+        image.Resize(
+            Convert.ToUInt32(targetWidth),
+            Convert.ToUInt32(targetHeight));
+    }
+
+    private static void ConfigureReducedEncoding(MagickImage image)
+    {
         image.Format = MagickFormat.WebP;
         image.Quality = AppNumericConstants.ReducedQuality;
+    }
 
-        var bytes = image.ToByteArray(MagickFormat.WebP);
-        var metadata = new ImageMetadata(
-            targetWidth,
-            targetHeight,
-            targetDpi);
+    private static byte[] EncodeReducedImage(MagickImage image)
+    {
+        return image.ToByteArray(MagickFormat.WebP);
+    }
 
-        return new ImageData(
-            bytes,
-            metadata);
+    private static ImageMetadata CreateMetadata(
+        int width,
+        int height,
+        double dpi)
+    {
+        return new ImageMetadata(
+            width,
+            height,
+            dpi);
     }
 }

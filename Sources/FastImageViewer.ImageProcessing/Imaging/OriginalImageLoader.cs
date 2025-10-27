@@ -25,30 +25,56 @@ public static class OriginalImageLoader
         ImageEntry entry,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        await using var fileStream = new FileStream(
-            entry.FullPath,
-            new FileStreamOptions
-            {
-                Access = FileAccess.Read,
-                Mode = FileMode.Open,
-                Share = FileShare.Read,
-                BufferSize = AppNumericConstants.ImageFileReadBufferSize,
-                Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
-            });
-        cancellationToken.ThrowIfCancellationRequested();
-
-        using var image = new MagickImage();
-        await image
-            .ReadAsync(
-                fileStream,
+        return await MagickImageLoader
+            .WithImageAsync(
+                entry,
+                ProcessOriginalImage,
                 cancellationToken)
             .ConfigureAwait(false);
+    }
 
+    private static ImageData ProcessOriginalImage(
+        MagickImage image,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var dpi = DetermineOriginalDpi(image);
+        var bytes = EncodeLosslessWebp(image);
+        var metadata = CreateOriginalMetadata(
+            image,
+            dpi);
+
+        return new ImageData(
+            bytes,
+            metadata);
+    }
+
+    private static double DetermineOriginalDpi(MagickImage image)
+    {
         var density = image.Density ?? new Density(AppNumericConstants.DefaultDpi);
-        var dpi = density.X > 0
+
+        return density.X > 0
             ? density.X
             : AppNumericConstants.DefaultDpi;
+    }
+
+    private static byte[] EncodeLosslessWebp(MagickImage image)
+    {
+        ConfigureLosslessWebpSettings(image);
+
+        try
+        {
+            return image.ToByteArray(MagickFormat.WebP);
+        }
+        finally
+        {
+            ResetWebpSettings(image);
+        }
+    }
+
+    private static void ConfigureLosslessWebpSettings(MagickImage image)
+    {
         image.Settings.SetDefine(
             MagickFormat.WebP,
             AppInvariantStringConstants.WebpLosslessDefineName,
@@ -61,8 +87,10 @@ public static class OriginalImageLoader
             MagickFormat.WebP,
             AppInvariantStringConstants.WebpAlphaQualityDefineName,
             AppInvariantStringConstants.WebpAlphaQualityDefineValue);
-        var bytes = image.ToByteArray(MagickFormat.WebP);
+    }
 
+    private static void ResetWebpSettings(MagickImage image)
+    {
         image.Settings.RemoveDefine(
             MagickFormat.WebP,
             AppInvariantStringConstants.WebpLosslessDefineName);
@@ -72,13 +100,15 @@ public static class OriginalImageLoader
         image.Settings.RemoveDefine(
             MagickFormat.WebP,
             AppInvariantStringConstants.WebpAlphaQualityDefineName);
-        var metadata = new ImageMetadata(
+    }
+
+    private static ImageMetadata CreateOriginalMetadata(
+        MagickImage image,
+        double dpi)
+    {
+        return new ImageMetadata(
             image.Width.EnsureDimensionWithinInt32Range(nameof(image.Width)),
             image.Height.EnsureDimensionWithinInt32Range(nameof(image.Height)),
             dpi);
-
-        return new ImageData(
-            bytes,
-            metadata);
     }
 }

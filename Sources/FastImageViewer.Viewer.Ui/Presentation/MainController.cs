@@ -3,8 +3,6 @@
 // This software is licensed under the GNU Affero General Public License Version 3. See LICENSE for details.
 // </copyright>
 
-using System.Reactive.Threading.Tasks;
-
 using Akavache;
 
 using Avalonia.Controls;
@@ -24,20 +22,14 @@ namespace FastImageViewer.Viewer.Ui.Presentation;
 internal sealed class MainController : IDisposable
 {
     private readonly WarmthMode _mode;
-    private readonly ImagePresenter _presenter;
     private readonly ImageCachePipeline _cachePipeline;
+    private readonly ImageDisplayCoordinator _displayCoordinator;
+    private readonly ViewerStateComposer _stateComposer;
     private GalleryNavigator? _navigator;
     private ScreenMetrics _screenMetrics;
-    private CancellationTokenSource? _displayCancellationTokenSource;
-    private ImageEntry? _currentEntry;
-    private ImageDataResult? _currentReduced;
-    private ImageDataResult? _currentOriginal;
-    private PresentationKind _lastPresented = PresentationKind.None;
     private bool _initialized;
-    private bool _isLoading;
     private bool _isCaching;
     private double _cachingProgress;
-    private string? _errorMessage;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MainController"/> class.
@@ -49,13 +41,17 @@ internal sealed class MainController : IDisposable
         ImagePresenter presenter)
     {
         _mode = mode;
-        _presenter = presenter;
+        _stateComposer = new ViewerStateComposer(mode);
 
         var distributed = new AkavacheDistributedCacheAdapter(CacheDatabase.LocalMachine);
         var fusionCache = FusionCacheFactory.Create(distributed);
         _cachePipeline = new ImageCachePipeline(
             fusionCache,
             mode);
+        _displayCoordinator = new ImageDisplayCoordinator(
+            presenter,
+            _cachePipeline,
+            NotifyDisplayStateChanged);
     }
 
     /// <summary>
@@ -84,57 +80,10 @@ internal sealed class MainController : IDisposable
             return;
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
-
-        _screenMetrics = await Dispatcher
-            .UIThread
-            .InvokeAsync(
-                () => ScreenMetricsProvider.GetPrimaryMetrics(topLevel),
-                DispatcherPriority.MaxValue,
-                cancellationToken);
-        var entries = await GalleryScanner.ScanAsync(cancellationToken);
-        _navigator = new GalleryNavigator(entries);
-        _initialized = true;
-
-        UpdateState(cancellationToken);
-
-        if (entries.Count == 0)
-        {
-            return;
-        }
-
-        if (_mode == WarmthMode.Hot)
-        {
-            _isCaching = true;
-            _cachingProgress = AppNumericConstants.ProgressMinimum;
-            UpdateState(cancellationToken);
-
-            try
-            {
-                var progress = new Progress<double>(value =>
-                {
-                    _cachingProgress = value;
-                    UpdateState(cancellationToken);
-                });
-
-                await _cachePipeline.WarmAllAsync(
-                    entries,
-                    _screenMetrics,
-                    progress,
-                    cancellationToken);
-            }
-            finally
-            {
-                _isCaching = false;
-                _cachingProgress = AppNumericConstants.ProgressMinimum;
-                UpdateState(cancellationToken);
-            }
-        }
-
-        await ShowEntryAsync(
-            _navigator.Current,
-            _mode != WarmthMode.Cold,
-            cancellationToken);
+        await InitializeCoreAsync(
+                topLevel,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>
@@ -151,12 +100,7 @@ internal sealed class MainController : IDisposable
     /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
     public void ClearError(CancellationToken cancellationToken)
     {
-        if (_errorMessage is null)
-        {
-            return;
-        }
-
-        _errorMessage = null;
+        _displayCoordinator.ClearError();
         UpdateState(cancellationToken);
     }
 
@@ -219,69 +163,34 @@ internal sealed class MainController : IDisposable
             return;
         }
 
-        if (_currentEntry is null)
+        if (_displayCoordinator.CurrentEntry is null)
         {
             return;
         }
 
-        var displayToken = StartDisplayOperation(cancellationToken);
-        BeginLoading(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        try
-        {
-            if (_lastPresented != PresentationKind.Original)
-            {
-                _currentOriginal ??= await _cachePipeline.GetOriginalAsync(
-                    _currentEntry,
-                    displayToken);
-
-                _lastPresented = PresentationKind.Original;
-                await PresentAsync(
-                    _currentOriginal,
-                    displayToken);
-
-                UpdateState(cancellationToken);
-
-                return;
-            }
-
-            if (_currentReduced is null)
-            {
-                _currentReduced = await _cachePipeline.GetReducedAsync(
-                    _currentEntry,
-                    _screenMetrics,
-                    displayToken);
-                if (_currentReduced is null)
-                {
-                    return;
-                }
-            }
-
-            _lastPresented = PresentationKind.Reduced;
-            await PresentAsync(
-                _currentReduced,
-                displayToken);
-            UpdateState(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            HandleError(ex);
-        }
-        finally
-        {
-            EndLoading(cancellationToken);
-        }
+        await _displayCoordinator.ToggleOriginalAsync(
+            _screenMetrics,
+            cancellationToken);
     }
 
     /// <inheritdoc/>
     public void Dispose()
     {
-        CancelCurrent();
-        _presenter.Dispose();
+        _displayCoordinator.DisposeResources();
+    }
+
+    private static async Task<ScreenMetrics> FetchScreenMetricsAsync(
+        TopLevel topLevel,
+        CancellationToken cancellationToken)
+    {
+        return await Dispatcher
+            .UIThread
+            .InvokeAsync(
+                () => ScreenMetricsProvider.GetPrimaryMetrics(topLevel),
+                DispatcherPriority.MaxValue,
+                cancellationToken);
     }
 
     private async Task ShowEntryAsync(
@@ -291,195 +200,60 @@ internal sealed class MainController : IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var displayToken = StartDisplayOperation(cancellationToken);
-        BeginLoading(cancellationToken);
-
-        try
-        {
-            if (entry is null)
-            {
-                await _presenter
-                    .ClearAsync(displayToken)
-                    .ToObservable()
-                    .ToTask(displayToken);
-
-                _currentEntry = null;
-                _currentReduced = null;
-                _currentOriginal = null;
-                _lastPresented = PresentationKind.None;
-                UpdateState(cancellationToken);
-
-                return;
-            }
-
-            _currentEntry = entry;
-            _currentReduced = null;
-            _currentOriginal = null;
-            if (preferReduced)
-            {
-                var reduced = await _cachePipeline.GetReducedAsync(
-                    entry,
-                    _screenMetrics,
-                    displayToken);
-                if (reduced is not null)
-                {
-                    _currentReduced = reduced;
-                    _lastPresented = PresentationKind.Reduced;
-                    await PresentAsync(
-                        reduced,
-                        displayToken);
-
-                    UpdateState(cancellationToken);
-
-                    return;
-                }
-            }
-
-            var original = await _cachePipeline.GetOriginalAsync(
-                entry,
-                displayToken);
-            _currentOriginal = original;
-            _lastPresented = PresentationKind.Original;
-            await PresentAsync(
-                original,
-                displayToken);
-
-            UpdateState(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            HandleError(ex);
-        }
-        finally
-        {
-            EndLoading(cancellationToken);
-        }
-    }
-
-    private async Task PresentAsync(
-        ImageDataResult data,
-        CancellationToken cancellationToken)
-    {
-        await _presenter.ShowAsync(
-            data.Bytes,
+        await _displayCoordinator.ShowEntryAsync(
+            entry,
+            _screenMetrics,
+            preferReduced,
             cancellationToken);
     }
 
-    private CancellationToken StartDisplayOperation(CancellationToken cancellationToken)
+    private void NotifyDisplayStateChanged()
     {
-        CancelCurrent();
-
-        var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _displayCancellationTokenSource = source;
-
-        return source.Token;
-    }
-
-    private void CancelCurrent()
-    {
-        if (_displayCancellationTokenSource is null)
-        {
-            return;
-        }
-
-        _displayCancellationTokenSource.Cancel();
-        _displayCancellationTokenSource.Dispose();
-        _displayCancellationTokenSource = null;
+        UpdateState(CancellationToken.None);
     }
 
     private void UpdateState(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (_navigator is null)
-        {
-            PublishState(new ViewerState(
-                false,
-                false,
-                false,
-                AppLocalizedStrings.ToggleShowOriginal,
-                AppLocalizedStrings.WindowTitleFallback,
-                _isLoading,
-                _isCaching,
-                _cachingProgress,
-                _errorMessage));
+        var state = _stateComposer.Compose(
+            _navigator,
+            _displayCoordinator,
+            _isCaching,
+            _cachingProgress);
 
-            return;
-        }
+        PublishState(state);
+    }
 
-        var canToggle = (_mode != WarmthMode.Cold) &&
-            _lastPresented switch
-            {
-                PresentationKind.Reduced => _currentEntry is not null,
-                PresentationKind.Original => _currentReduced is not null,
-                _ => false,
-            };
-        var toggleText = _lastPresented == PresentationKind.Original
-            ? AppLocalizedStrings.ToggleShowReduced
-            : AppLocalizedStrings.ToggleShowOriginal;
-        var title = _currentEntry?.FileName ?? AppLocalizedStrings.WindowTitleFallback;
-        var canMoveBackward = _navigator.CanMovePrevious;
-        var canMoveForward = _navigator.CanMoveNext;
-        if (_isCaching)
-        {
-            canToggle = false;
-            canMoveBackward = false;
-            canMoveForward = false;
-        }
-
+    private async Task InitializeCoreAsync(
+        TopLevel topLevel,
+        CancellationToken cancellationToken)
+    {
         cancellationToken.ThrowIfCancellationRequested();
 
-        PublishState(new ViewerState(
-            canMoveBackward,
-            canMoveForward,
-            canToggle,
-            toggleText,
-            title,
-            _isLoading,
-            _isCaching,
-            _cachingProgress,
-            _errorMessage));
-    }
+        _screenMetrics = await FetchScreenMetricsAsync(
+            topLevel,
+            cancellationToken);
+        var entries = await GalleryScanner.ScanAsync(cancellationToken);
 
-    private void BeginLoading(CancellationToken cancellationToken)
-    {
-        if (_isLoading)
+        _navigator = new GalleryNavigator(entries);
+        _initialized = true;
+
+        UpdateState(cancellationToken);
+
+        if (entries.Count == 0)
         {
             return;
         }
 
-        _isLoading = true;
-        if (_errorMessage is not null)
-        {
-            _errorMessage = null;
-        }
+        await WarmCacheAsync(
+            entries,
+            cancellationToken);
 
-        UpdateState(cancellationToken);
-    }
-
-    private void EndLoading(CancellationToken cancellationToken)
-    {
-        if (!_isLoading)
-        {
-            return;
-        }
-
-        _isLoading = false;
-        UpdateState(cancellationToken);
-    }
-
-    private void HandleError(Exception exception)
-    {
-        Serilog.Log.Error(
-            exception,
-            "Unexpected controller error during presentation workflow.");
-        _isLoading = false;
-        _errorMessage = $"{exception.Message}\n\n{exception}";
-        UpdateState(default);
+        await ShowEntryAsync(
+            _navigator.Current,
+            ShouldPreferReduced(),
+            cancellationToken);
     }
 
     private void PublishState(ViewerState state)
@@ -489,5 +263,45 @@ internal sealed class MainController : IDisposable
             .Post(
                 () => StateChanged?.Invoke(state),
                 DispatcherPriority.Normal);
+    }
+
+    private bool ShouldPreferReduced()
+    {
+        return _mode != WarmthMode.Cold;
+    }
+
+    private async Task WarmCacheAsync(
+        IReadOnlyList<ImageEntry> entries,
+        CancellationToken cancellationToken)
+    {
+        if (_mode != WarmthMode.Hot)
+        {
+            return;
+        }
+
+        _isCaching = true;
+        _cachingProgress = AppNumericConstants.ProgressMinimum;
+        UpdateState(cancellationToken);
+
+        try
+        {
+            var progress = new Progress<double>(value =>
+            {
+                _cachingProgress = value;
+                UpdateState(cancellationToken);
+            });
+
+            await _cachePipeline.WarmAllAsync(
+                entries,
+                _screenMetrics,
+                progress,
+                cancellationToken);
+        }
+        finally
+        {
+            _isCaching = false;
+            _cachingProgress = AppNumericConstants.ProgressMinimum;
+            UpdateState(cancellationToken);
+        }
     }
 }

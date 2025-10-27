@@ -34,31 +34,21 @@ internal sealed partial class MainWindow : Window
     /// Initializes a new instance of the <see cref="MainWindow"/> class.
     /// </summary>
     /// <param name="mode">The warm-up mode determining startup behavior.</param>
-    public MainWindow(
-        WarmthMode mode)
+    public MainWindow(WarmthMode mode)
     {
         InitializeComponent();
 
-        var displayImage = this.FindControl<Image>(AppInvariantStringConstants.ControlDisplayImageName)
-            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlDisplayImageName} control not found.");
-        _closeButton = this.FindControl<Button>(AppInvariantStringConstants.ControlCloseButtonName)
-            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlCloseButtonName} control not found.");
-        _backwardButton = this.FindControl<Button>(AppInvariantStringConstants.ControlBackwardButtonName)
-            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlBackwardButtonName} control not found.");
-        _forwardButton = this.FindControl<Button>(AppInvariantStringConstants.ControlForwardButtonName)
-            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlForwardButtonName} control not found.");
-        _toggleOriginalButton = this.FindControl<Button>(AppInvariantStringConstants.ControlToggleOriginalButtonName)
-            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlToggleOriginalButtonName} control not found.");
-        _loadingContainer = this.FindControl<Border>(AppInvariantStringConstants.ControlLoadingContainerName)
-            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlLoadingContainerName} control not found.");
-        _cachingContainer = this.FindControl<Border>(AppInvariantStringConstants.ControlCachingContainerName)
-            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlCachingContainerName} control not found.");
-        _cachingProgressBar = this.FindControl<ProgressBar>(AppInvariantStringConstants.ControlCachingProgressBarName)
-            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlCachingProgressBarName} control not found.");
-        _errorContainer = this.FindControl<Border>(AppInvariantStringConstants.ControlErrorContainerName)
-            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlErrorContainerName} control not found.");
-        _errorTextBlock = this.FindControl<TextBlock>(AppInvariantStringConstants.ControlErrorTextBlockName)
-            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlErrorTextBlockName} control not found.");
+        var controls = ResolveControlReferences();
+        var displayImage = controls.DisplayImage;
+        _closeButton = controls.CloseButton;
+        _backwardButton = controls.BackwardButton;
+        _forwardButton = controls.ForwardButton;
+        _toggleOriginalButton = controls.ToggleOriginalButton;
+        _loadingContainer = controls.LoadingContainer;
+        _cachingContainer = controls.CachingContainer;
+        _cachingProgressBar = controls.CachingProgressBar;
+        _errorContainer = controls.ErrorContainer;
+        _errorTextBlock = controls.ErrorTextBlock;
 
         var presenter = new ImagePresenter(displayImage);
         _controller = new MainController(
@@ -79,6 +69,39 @@ internal sealed partial class MainWindow : Window
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
+    }
+
+    private (
+        Image DisplayImage,
+        Button CloseButton,
+        Button BackwardButton,
+        Button ForwardButton,
+        Button ToggleOriginalButton,
+        Border LoadingContainer,
+        Border CachingContainer,
+        ProgressBar CachingProgressBar,
+        Border ErrorContainer,
+        TextBlock ErrorTextBlock)
+        ResolveControlReferences()
+    {
+        return (
+            FindRequiredControl<Image>(AppInvariantStringConstants.ControlDisplayImageName),
+            FindRequiredControl<Button>(AppInvariantStringConstants.ControlCloseButtonName),
+            FindRequiredControl<Button>(AppInvariantStringConstants.ControlBackwardButtonName),
+            FindRequiredControl<Button>(AppInvariantStringConstants.ControlForwardButtonName),
+            FindRequiredControl<Button>(AppInvariantStringConstants.ControlToggleOriginalButtonName),
+            FindRequiredControl<Border>(AppInvariantStringConstants.ControlLoadingContainerName),
+            FindRequiredControl<Border>(AppInvariantStringConstants.ControlCachingContainerName),
+            FindRequiredControl<ProgressBar>(AppInvariantStringConstants.ControlCachingProgressBarName),
+            FindRequiredControl<Border>(AppInvariantStringConstants.ControlErrorContainerName),
+            FindRequiredControl<TextBlock>(AppInvariantStringConstants.ControlErrorTextBlockName));
+    }
+
+    private T FindRequiredControl<T>(string name)
+        where T : Control
+    {
+        return this.FindControl<T>(name)
+            ?? throw new InvalidOperationException($"{name} control not found.");
     }
 
     private void OnClose(

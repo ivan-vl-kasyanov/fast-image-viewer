@@ -22,7 +22,7 @@
 ### Naming and member design
 - Use PascalCase for classes, methods, properties, events, constants, and enums. Prefix private instance fields with an underscore and camelCase (e.g., `_controller`). Parameters and local variables use camelCase. Boolean fields typically start with `is`/`has` prefixes.
 - Use `const` and `readonly` appropriately; constants remain PascalCase. Prefer explicit access modifiers on all members (e.g., `internal sealed`, `private static`).
-- Sort elements in the following order and priority: constants, properties, fields, events, `private` enums, `private` structs, `private` records, constructors, methods; `public`, `internal`, `protected`, `private`; `static`, non-static; `async`, non-async; lexicographically ascending.
+- Sort elements in the following order and priority: constants -> fields -> properties -> events -> `private` enums -> `private` structs -> `private` records -> constructors -> methods -> `private` classes; `public` -> `internal` -> `protected` -> `private`; `static` -> non-static; `async` -> non-async; lexicographically ascending.
 - All `public` and `internal` classes, structures, records, and enums must be placed in separate .cs files. The file name must be the same as the entity name.
 - Preserve the concise single-line style (`[]`) for empty array expressions and tuple/record parameter lists when they fit on one line.
 ### Coding patterns
@@ -34,6 +34,7 @@
 - Async methods end with the `Async` postfix and accept `CancellationToken` as the final required parameter. Propagate cancellation with `ThrowIfCancellationRequested()` if required.
 - Perform early returns for guard clauses and null checks before continuing with the main logic.
 - Prefer `var` for local variables when the type is evident from the right-hand side.
+- Use the `ConfigureAwait(false)` in all methods in case of calling third-party methods. If you call first-party methods (from your own code), use `ConfigureAwait(false)` only in `public` and `internal` methods (do not use it for first-party calls in `protected` and `private` methods).
 ### StyleCop analyzers
 - The repository uses StyleCop Analyzers with the default rule set. Expect warnings and/or errors for violations of documentation, layout, ordering, readability, maintainability, naming, and spacing rules (SA1xxx–SA7xxx categories). Ensure new code compiles cleanly under these analyzers.
 - Customized StyleCop settings require omitting trailing newlines at the end of files and keeping using directives outside namespaces (`orderingRules.usingDirectivesPlacement = outsideNamespace`).

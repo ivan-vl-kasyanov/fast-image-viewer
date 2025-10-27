@@ -25,8 +25,10 @@ public static class ScreenMetricsProvider
         if (screen is null)
         {
             return new ScreenMetrics(
-                topLevel.ClientSize.Width.EnsureDimensionWithinInt32Range(nameof(topLevel.ClientSize.Width)),
-                topLevel.ClientSize.Height.EnsureDimensionWithinInt32Range(nameof(topLevel.ClientSize.Height)),
+                topLevel.ClientSize.Width.EnsureDimensionWithinInt32Range(
+                    nameof(topLevel.ClientSize.Width)),
+                topLevel.ClientSize.Height.EnsureDimensionWithinInt32Range(
+                    nameof(topLevel.ClientSize.Height)),
                 AppNumericConstants.DefaultDpi);
         }
 
