@@ -3,6 +3,7 @@
 // This software is licensed under the GNU Affero General Public License Version 3. See LICENSE for details.
 // </copyright>
 
+using FastImageViewer.Resources;
 using FastImageViewer.Shared.FastImageViewer.Configuration;
 
 namespace FastImageViewer;
@@ -19,10 +20,6 @@ internal static class WarmthModeParser
     /// <returns>The parsed warm-up mode and remaining arguments.</returns>
     public static WarmthParseResult Parse(string[] args)
     {
-        const string ParameterNameMode = "--mode=";
-        const string ParameterNameModeHot = "hot";
-        const string ParameterNameModeClean = "clean";
-
         if (args.Length == 0)
         {
             return new WarmthParseResult(
@@ -32,15 +29,17 @@ internal static class WarmthModeParser
 
         var remaining = new List<string>(args.Length);
         var mode = WarmthMode.Cold;
+        var modePrefix = AppInvariantStringConstants.CommandLineModeParameterPrefix;
+        var modePrefixLength = modePrefix.Length;
         foreach (var argument in args)
         {
-            if (argument.StartsWith(ParameterNameMode, StringComparison.OrdinalIgnoreCase))
+            if (argument.StartsWith(modePrefix, StringComparison.OrdinalIgnoreCase))
             {
-                var value = argument[7..].Trim();
+                var value = argument[modePrefixLength..].Trim();
                 mode = value.ToLowerInvariant() switch
                 {
-                    ParameterNameModeHot => WarmthMode.Hot,
-                    ParameterNameModeClean => WarmthMode.Clean,
+                    AppInvariantStringConstants.CommandLineModeHotValue => WarmthMode.Hot,
+                    AppInvariantStringConstants.CommandLineModeCleanValue => WarmthMode.Clean,
                     _ => WarmthMode.Cold,
                 };
             }

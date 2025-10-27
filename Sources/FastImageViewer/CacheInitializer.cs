@@ -26,7 +26,7 @@ internal static class CacheInitializer
     {
         var localMachinePath = Path.Combine(
             cacheDirectory,
-            AppConstants.LocalMachineCacheFileName);
+            AppInvariantStringConstants.LocalMachineCacheFileName);
         var scheduler = CacheDatabase.TaskpoolScheduler ?? TaskPoolScheduler.Default;
         var serializer = new SystemJsonSerializer();
         var customCache = new SqliteBlobCache(
@@ -42,7 +42,7 @@ internal static class CacheInitializer
             .WithAkavacheCacheDatabase<SystemJsonSerializer>(builder =>
             {
                 builder
-                    .WithApplicationName(AppConstants.AppName)
+                    .WithApplicationName(AppInvariantStringConstants.AppName)
                     .WithSqliteProvider()
                     .WithSqliteDefaults()
                     .WithLocalMachine(customCache);

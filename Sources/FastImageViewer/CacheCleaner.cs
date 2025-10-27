@@ -38,7 +38,7 @@ internal static class CacheCleaner
             var scheduler = CacheDatabase.TaskpoolScheduler ?? TaskPoolScheduler.Default;
             var localMachinePath = Path.Combine(
                 cacheDirectory,
-                AppConstants.LocalMachineCacheFileName);
+                AppInvariantStringConstants.LocalMachineCacheFileName);
 
             using var cache = new SqliteBlobCache(
                 localMachinePath,

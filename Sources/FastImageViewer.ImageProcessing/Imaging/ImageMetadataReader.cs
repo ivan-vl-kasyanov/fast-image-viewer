@@ -28,7 +28,7 @@ public static class ImageMetadataReader
         var density = info.Density;
         var dpi = density?.X > 0
             ? density!.X
-            : AppConstants.DefaultDpi;
+            : AppNumericConstants.DefaultDpi;
 
         return new ImageMetadata(
             (int)info.Width,

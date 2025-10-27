@@ -26,17 +26,17 @@ internal static class LoggingInitializer
         {
             var logFilePath = Path.Combine(
                 AppPaths.CacheDirectory,
-                AppConstants.LogFileName);
+                AppInvariantStringConstants.LogFileName);
 
             Log.Logger = new LoggerConfiguration()
                 .WriteTo.Console(LogEventLevel.Information)
                 .WriteTo.File(
                     logFilePath,
-                    fileSizeLimitBytes: 1_048_576,
+                    fileSizeLimitBytes: AppNumericConstants.LogFileRollingSizeLimitBytes,
                     restrictedToMinimumLevel: LogEventLevel.Warning,
                     rollingInterval: RollingInterval.Month,
                     rollOnFileSizeLimit: true,
-                    retainedFileCountLimit: 3,
+                    retainedFileCountLimit: AppNumericConstants.LogFileRetainedCountLimit,
                     shared: true)
                 .CreateLogger();
 

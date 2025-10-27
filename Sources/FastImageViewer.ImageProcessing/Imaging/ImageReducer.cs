@@ -35,7 +35,7 @@ public static class ImageReducer
                 Access = FileAccess.Read,
                 Mode = FileMode.Open,
                 Share = FileShare.Read,
-                BufferSize = AppConstants.ImageFileReadBufferSize,
+                BufferSize = AppNumericConstants.ImageFileReadBufferSize,
                 Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
             });
         cancellationToken.ThrowIfCancellationRequested();
@@ -51,10 +51,10 @@ public static class ImageReducer
         var originalHeight = image.Height;
         var scaleWidth = metrics.Width > 0
             ? (double)metrics.Width / originalWidth
-            : 1d;
+            : AppNumericConstants.IdentityScaleFactor;
         var scaleHeight = metrics.Height > 0
             ? (double)metrics.Height / originalHeight
-            : 1d;
+            : AppNumericConstants.IdentityScaleFactor;
         var shouldResize =
             (originalWidth > metrics.Width) ||
             (originalHeight > metrics.Height);
@@ -63,21 +63,21 @@ public static class ImageReducer
                 Math.Min(
                     scaleWidth,
                     scaleHeight),
-                1d)
-            : 1d;
+                AppNumericConstants.IdentityScaleFactor)
+            : AppNumericConstants.IdentityScaleFactor;
         var targetWidth = Math.Max(
-            1,
+            AppNumericConstants.MinimumImageDimension,
             (int)Math.Round(originalWidth * scale));
         var targetHeight = Math.Max(
-            1,
+            AppNumericConstants.MinimumImageDimension,
             (int)Math.Round(originalHeight * scale));
-        var originalDensity = image.Density ?? new Density(AppConstants.DefaultDpi);
+        var originalDensity = image.Density ?? new Density(AppNumericConstants.DefaultDpi);
         var originalDpi = originalDensity.X > 0
             ? originalDensity.X
-            : AppConstants.DefaultDpi;
+            : AppNumericConstants.DefaultDpi;
         var targetDpi = Math.Min(
             originalDpi,
-            metrics.Dpi > 0 ? metrics.Dpi : AppConstants.DefaultDpi);
+            metrics.Dpi > 0 ? metrics.Dpi : AppNumericConstants.DefaultDpi);
         image.Density = new Density(
             targetDpi,
             targetDpi,
@@ -91,7 +91,7 @@ public static class ImageReducer
         }
 
         image.Format = MagickFormat.WebP;
-        image.Quality = AppConstants.ReducedQuality;
+        image.Quality = AppNumericConstants.ReducedQuality;
 
         var bytes = image.ToByteArray(MagickFormat.WebP);
         var metadata = new ImageMetadata(

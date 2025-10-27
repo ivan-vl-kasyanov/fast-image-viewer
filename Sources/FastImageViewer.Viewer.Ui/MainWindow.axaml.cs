@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 
+using FastImageViewer.Resources;
 using FastImageViewer.Shared.FastImageViewer.Configuration;
 using FastImageViewer.Shared.FastImageViewer.Threading;
 using FastImageViewer.Viewer.Ui.Presentation;
@@ -18,17 +19,6 @@ namespace FastImageViewer.Viewer.Ui;
 /// </summary>
 internal sealed partial class MainWindow : Window
 {
-    private const string ImageDisplayName = "DisplayImage";
-    private const string ButtonCloseName = "CloseButton";
-    private const string ButtonBackwardName = "BackwardButton";
-    private const string ButtonForwardName = "ForwardButton";
-    private const string ButtonToggleOriginalName = "ToggleOriginalButton";
-    private const string LoadingContainerName = "LoadingContainer";
-    private const string CachingContainerName = "CachingContainer";
-    private const string CachingProgressBarName = "CachingProgressBar";
-    private const string ErrorContainerName = "ErrorContainer";
-    private const string ErrorTextBlockName = "ErrorTextBlock";
-
     private readonly MainController _controller;
     private readonly Button _closeButton;
     private readonly Button _backwardButton;
@@ -49,26 +39,26 @@ internal sealed partial class MainWindow : Window
     {
         InitializeComponent();
 
-        var displayImage = this.FindControl<Image>(ImageDisplayName)
-            ?? throw new InvalidOperationException($"{ImageDisplayName} control not found.");
-        _closeButton = this.FindControl<Button>(ButtonCloseName)
-            ?? throw new InvalidOperationException($"{ButtonCloseName} control not found.");
-        _backwardButton = this.FindControl<Button>(ButtonBackwardName)
-            ?? throw new InvalidOperationException($"{ButtonBackwardName} control not found.");
-        _forwardButton = this.FindControl<Button>(ButtonForwardName)
-            ?? throw new InvalidOperationException($"{ButtonForwardName} control not found.");
-        _toggleOriginalButton = this.FindControl<Button>(ButtonToggleOriginalName)
-            ?? throw new InvalidOperationException($"{ButtonToggleOriginalName} control not found.");
-        _loadingContainer = this.FindControl<Border>(LoadingContainerName)
-            ?? throw new InvalidOperationException($"{LoadingContainerName} control not found.");
-        _cachingContainer = this.FindControl<Border>(CachingContainerName)
-            ?? throw new InvalidOperationException($"{CachingContainerName} control not found.");
-        _cachingProgressBar = this.FindControl<ProgressBar>(CachingProgressBarName)
-            ?? throw new InvalidOperationException($"{CachingProgressBarName} control not found.");
-        _errorContainer = this.FindControl<Border>(ErrorContainerName)
-            ?? throw new InvalidOperationException($"{ErrorContainerName} control not found.");
-        _errorTextBlock = this.FindControl<TextBlock>(ErrorTextBlockName)
-            ?? throw new InvalidOperationException($"{ErrorTextBlockName} control not found.");
+        var displayImage = this.FindControl<Image>(AppInvariantStringConstants.ControlDisplayImageName)
+            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlDisplayImageName} control not found.");
+        _closeButton = this.FindControl<Button>(AppInvariantStringConstants.ControlCloseButtonName)
+            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlCloseButtonName} control not found.");
+        _backwardButton = this.FindControl<Button>(AppInvariantStringConstants.ControlBackwardButtonName)
+            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlBackwardButtonName} control not found.");
+        _forwardButton = this.FindControl<Button>(AppInvariantStringConstants.ControlForwardButtonName)
+            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlForwardButtonName} control not found.");
+        _toggleOriginalButton = this.FindControl<Button>(AppInvariantStringConstants.ControlToggleOriginalButtonName)
+            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlToggleOriginalButtonName} control not found.");
+        _loadingContainer = this.FindControl<Border>(AppInvariantStringConstants.ControlLoadingContainerName)
+            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlLoadingContainerName} control not found.");
+        _cachingContainer = this.FindControl<Border>(AppInvariantStringConstants.ControlCachingContainerName)
+            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlCachingContainerName} control not found.");
+        _cachingProgressBar = this.FindControl<ProgressBar>(AppInvariantStringConstants.ControlCachingProgressBarName)
+            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlCachingProgressBarName} control not found.");
+        _errorContainer = this.FindControl<Border>(AppInvariantStringConstants.ControlErrorContainerName)
+            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlErrorContainerName} control not found.");
+        _errorTextBlock = this.FindControl<TextBlock>(AppInvariantStringConstants.ControlErrorTextBlockName)
+            ?? throw new InvalidOperationException($"{AppInvariantStringConstants.ControlErrorTextBlockName} control not found.");
 
         var presenter = new ImagePresenter(displayImage);
         _controller = new MainController(
@@ -160,28 +150,28 @@ internal sealed partial class MainWindow : Window
         _toggleOriginalButton.Content = state.ToggleButtonContent;
         Title = state.WindowTitle;
         _loadingContainer.Opacity = state.IsLoading
-            ? 1
-            : 0;
+            ? AppNumericConstants.OpacityVisible
+            : AppNumericConstants.OpacityHidden;
         _cachingContainer.Opacity = state.IsCaching
-            ? 1
-            : 0;
+            ? AppNumericConstants.OpacityVisible
+            : AppNumericConstants.OpacityHidden;
 
         var cachingProgress = state.CachingProgress;
-        if (cachingProgress < 0)
+        if (cachingProgress < AppNumericConstants.ProgressMinimum)
         {
-            cachingProgress = 0;
+            cachingProgress = AppNumericConstants.ProgressMinimum;
         }
-        else if (cachingProgress > 1)
+        else if (cachingProgress > AppNumericConstants.ProgressMaximum)
         {
-            cachingProgress = 1;
+            cachingProgress = AppNumericConstants.ProgressMaximum;
         }
 
         _cachingProgressBar.Value = cachingProgress;
         _errorTextBlock.Text = state.ErrorMessage ?? string.Empty;
         var hasError = !string.IsNullOrWhiteSpace(state.ErrorMessage);
         _errorContainer.Opacity = hasError
-            ? 1
-            : 0;
+            ? AppNumericConstants.OpacityVisible
+            : AppNumericConstants.OpacityHidden;
         _errorContainer.IsHitTestVisible = hasError;
     }
 }

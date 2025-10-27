@@ -14,46 +14,13 @@ namespace FastImageViewer.ImageProcessing.Imaging;
 /// </summary>
 public static class ImageFormatHelper
 {
-    private static readonly ImmutableHashSet<string> _complicatedImageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        ".heic",
-        ".heif",
-        ".tif",
-        ".tiff",
-        ".3fr",
-        ".arw",
-        ".cr2",
-        ".cr3",
-        ".crw",
-        ".dcr",
-        ".dng",
-        ".erf",
-        ".kdc",
-        ".mef",
-        ".mos",
-        ".mrw",
-        ".nef",
-        ".nrw",
-        ".orf",
-        ".pef",
-        ".raf",
-        ".raw",
-        ".rw2",
-        ".sr2",
-        ".srf",
-        ".srw",
-    }.ToImmutableHashSet();
+    private static readonly ImmutableHashSet<string> _complicatedImageExtensions = ImmutableHashSet.CreateRange(
+        StringComparer.OrdinalIgnoreCase,
+        AppImageExtensionConstants.ComplicatedImageExtensions);
 
-    private static readonly ImmutableHashSet<string> _commonImageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        ".png",
-        ".jpg",
-        ".jpeg",
-        ".bmp",
-        ".gif",
-        ".webp",
-        ".avif",
-    }.ToImmutableHashSet();
+    private static readonly ImmutableHashSet<string> _commonImageExtensions = ImmutableHashSet.CreateRange(
+        StringComparer.OrdinalIgnoreCase,
+        AppImageExtensionConstants.CommonImageExtensions);
 
     /// <summary>
     /// Determines whether the specified extension is supported by the viewer.
@@ -96,7 +63,7 @@ public static class ImageFormatHelper
         long length)
     {
         return
-            length > AppConstants.DiskCacheEligibilityThresholdBytes ||
+            length > AppNumericConstants.DiskCacheEligibilityThresholdBytes ||
             extension.IsComplicated();
     }
 }

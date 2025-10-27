@@ -106,7 +106,7 @@ internal sealed class MainController : IDisposable
         if (_mode == WarmthMode.Hot)
         {
             _isCaching = true;
-            _cachingProgress = 0;
+            _cachingProgress = AppNumericConstants.ProgressMinimum;
             UpdateState(cancellationToken);
 
             try
@@ -126,7 +126,7 @@ internal sealed class MainController : IDisposable
             finally
             {
                 _isCaching = false;
-                _cachingProgress = 0;
+                _cachingProgress = AppNumericConstants.ProgressMinimum;
                 UpdateState(cancellationToken);
             }
         }
@@ -401,8 +401,8 @@ internal sealed class MainController : IDisposable
                 false,
                 false,
                 false,
-                AppConstants.ToggleShowOriginal,
-                AppConstants.WindowTitleFallback,
+                AppLocalizedStrings.ToggleShowOriginal,
+                AppLocalizedStrings.WindowTitleFallback,
                 _isLoading,
                 _isCaching,
                 _cachingProgress,
@@ -419,9 +419,9 @@ internal sealed class MainController : IDisposable
                 _ => false,
             };
         var toggleText = _lastPresented == PresentationKind.Original
-            ? AppConstants.ToggleShowReduced
-            : AppConstants.ToggleShowOriginal;
-        var title = _currentEntry?.FileName ?? AppConstants.WindowTitleFallback;
+            ? AppLocalizedStrings.ToggleShowReduced
+            : AppLocalizedStrings.ToggleShowOriginal;
+        var title = _currentEntry?.FileName ?? AppLocalizedStrings.WindowTitleFallback;
         var canMoveBackward = _navigator.CanMovePrevious;
         var canMoveForward = _navigator.CanMoveNext;
         if (_isCaching)

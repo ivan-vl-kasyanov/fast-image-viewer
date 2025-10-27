@@ -8,6 +8,8 @@ using System.Reactive.Threading.Tasks;
 
 using Akavache;
 
+using FastImageViewer.Resources;
+
 using Microsoft.Extensions.Caching.Distributed;
 
 namespace FastImageViewer.Cache;
@@ -18,7 +20,7 @@ namespace FastImageViewer.Cache;
 /// <param name="blobCache">The underlying Akavache blob cache.</param>
 public sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : IDistributedCache
 {
-    private const int DefaultCacheExpirationTimeout = 14;
+    private const int DefaultCacheExpirationTimeout = AppNumericConstants.DefaultCacheExpirationDays;
 
     private readonly IBlobCache _blobCache = blobCache;
     private readonly ConcurrentDictionary<string, CacheEntryOptionsSnapshot> _options = new();

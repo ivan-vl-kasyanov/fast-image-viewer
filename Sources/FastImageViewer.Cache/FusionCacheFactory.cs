@@ -17,15 +17,10 @@ namespace FastImageViewer.Cache;
 /// </summary>
 public static class FusionCacheFactory
 {
-    private const int CacheDurationMinutes = 15;
-    private const int CacheJitterMinutes = 2;
-    private const int FailSafeDurationHours = 1;
-    private const int DistributedCacheDurationDays = 30;
-
-    private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(CacheDurationMinutes);
-    private static readonly TimeSpan _cacheJitter = TimeSpan.FromMinutes(CacheJitterMinutes);
-    private static readonly TimeSpan _failSafeDuration = TimeSpan.FromHours(FailSafeDurationHours);
-    private static readonly TimeSpan _distributedCacheDuration = TimeSpan.FromDays(DistributedCacheDurationDays);
+    private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(AppNumericConstants.FusionCacheDurationMinutes);
+    private static readonly TimeSpan _cacheJitter = TimeSpan.FromMinutes(AppNumericConstants.FusionCacheJitterMinutes);
+    private static readonly TimeSpan _failSafeDuration = TimeSpan.FromHours(AppNumericConstants.FusionCacheFailSafeDurationHours);
+    private static readonly TimeSpan _distributedCacheDuration = TimeSpan.FromDays(AppNumericConstants.FusionCacheDistributedDurationDays);
 
     /// <summary>
     /// Creates a configured <see cref="IFusionCache"/> backed by the provided distributed cache.
@@ -36,7 +31,7 @@ public static class FusionCacheFactory
     {
         var options = new FusionCacheOptions
         {
-            CacheName = AppConstants.AppName,
+            CacheName = AppInvariantStringConstants.AppName,
             DefaultEntryOptions = new FusionCacheEntryOptions
             {
                 Duration = _cacheDuration,

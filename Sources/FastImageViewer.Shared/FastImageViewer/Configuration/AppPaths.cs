@@ -38,7 +38,7 @@ public static class AppPaths
 
                 var root = Path.Combine(
                     AppContext.BaseDirectory,
-                    AppConstants.GalleryFolderName);
+                    AppInvariantStringConstants.GalleryFolderName);
                 if (!Directory.Exists(root))
                 {
                     Directory.CreateDirectory(root);
@@ -46,12 +46,12 @@ public static class AppPaths
 
                 var readmePath = Path.Combine(
                     root,
-                    AppConstants.GalleryReadmeFileName);
+                    AppInvariantStringConstants.GalleryReadmeFileName);
                 if (!File.Exists(readmePath))
                 {
                     File.WriteAllText(
                         readmePath,
-                        AppConstants.GalleryReadmeContent);
+                        AppLocalizedStrings.GalleryReadmeContent);
                 }
 
                 _galleryDirectory = root;
@@ -85,7 +85,7 @@ public static class AppPaths
 
                 var root = Path.Combine(
                     AppContext.BaseDirectory,
-                    AppConstants.CacheFolderName);
+                    AppInvariantStringConstants.CacheFolderName);
                 if (!Directory.Exists(root))
                 {
                     Directory.CreateDirectory(root);

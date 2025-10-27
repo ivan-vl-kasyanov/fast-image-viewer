@@ -24,19 +24,10 @@ public sealed class ImageCachePipeline(
     IFusionCache fusionCache,
     WarmthMode mode) : ICachePipeline
 {
-    private const int MemoryDurationMinutes = 20;
-    private const int JitterMaxDurationMinutes = 2;
-    private const int FailSafeMaxDurationHours = 1;
-    private const int DistributedCacheDurationDays = 30;
-    private const int MemoryOriginalDurationMinutes = 20;
-    private const int JitterOriginalMaxDurationSeconds = 30;
-
-    private static readonly TimeSpan MemoryDuration = TimeSpan.FromMinutes(MemoryDurationMinutes);
-    private static readonly TimeSpan JitterMaxDuration = TimeSpan.FromMinutes(JitterMaxDurationMinutes);
-    private static readonly TimeSpan FailSafeMaxDuration = TimeSpan.FromHours(FailSafeMaxDurationHours);
-    private static readonly TimeSpan DistributedCacheDuration = TimeSpan.FromDays(DistributedCacheDurationDays);
-    private static readonly TimeSpan MemoryOriginalDuration = TimeSpan.FromMinutes(MemoryOriginalDurationMinutes);
-    private static readonly TimeSpan JitterOriginalMaxDuration = TimeSpan.FromSeconds(JitterOriginalMaxDurationSeconds);
+    private static readonly TimeSpan MemoryDuration = TimeSpan.FromMinutes(AppNumericConstants.MemoryCacheDurationMinutes);
+    private static readonly TimeSpan JitterMaxDuration = TimeSpan.FromMinutes(AppNumericConstants.MemoryCacheJitterMinutes);
+    private static readonly TimeSpan FailSafeMaxDuration = TimeSpan.FromHours(AppNumericConstants.MemoryCacheFailSafeHours);
+    private static readonly TimeSpan DistributedCacheDuration = TimeSpan.FromDays(AppNumericConstants.MemoryCacheDistributedDays);
 
     private readonly IFusionCache _fusionCache = fusionCache;
     private readonly WarmthMode _mode = mode;
@@ -49,13 +40,6 @@ public sealed class ImageCachePipeline(
         IsFailSafeEnabled = true,
         FailSafeMaxDuration = FailSafeMaxDuration,
         DistributedCacheDuration = DistributedCacheDuration,
-    };
-
-    private readonly FusionCacheEntryOptions _originalOptions = new()
-    {
-        Duration = MemoryOriginalDuration,
-        JitterMaxDuration = JitterOriginalMaxDuration,
-        DistributedCacheDuration = TimeSpan.Zero,
     };
 
     /// <summary>
@@ -104,7 +88,7 @@ public sealed class ImageCachePipeline(
             return new ImageDataResult(
                 bytes,
                 metadata,
-                AppConstants.SourceCache,
+                AppInvariantStringConstants.SourceCache,
                 true);
         }
         catch (OperationCanceledException)
@@ -133,44 +117,16 @@ public sealed class ImageCachePipeline(
         ImageEntry entry,
         CancellationToken cancellationToken)
     {
-        var key = entry.CacheKey + AppConstants.OriginalCacheSuffix;
-
         try
         {
-            if (_mode == WarmthMode.Cold)
-            {
-                var data = await OriginalImageLoader.LoadAsync(
-                    entry,
-                    cancellationToken);
-
-                return new ImageDataResult(
-                    data.Bytes,
-                    data.Metadata,
-                    AppConstants.SourceOriginal,
-                    false);
-            }
-
-            var bytes = await _fusionCache.GetOrSetAsync<byte[]>(
-                key,
-                async (_, token) =>
-                {
-                    var data = await OriginalImageLoader.LoadAsync(
-                        entry,
-                        token);
-                    _metadataCache[key] = data.Metadata;
-
-                    return data.Bytes;
-                },
-                _originalOptions,
+            var data = await OriginalImageLoader.LoadAsync(
+                entry,
                 cancellationToken);
-            var metadata = EnsureMetadata(
-                key,
-                bytes);
 
             return new ImageDataResult(
-                bytes,
-                metadata,
-                AppConstants.SourceCache,
+                data.Bytes,
+                data.Metadata,
+                AppInvariantStringConstants.SourceOriginal,
                 false);
         }
         catch (OperationCanceledException)
@@ -179,10 +135,6 @@ public sealed class ImageCachePipeline(
         }
         catch (Exception ex)
         {
-            LogBackgroundError(
-                ex,
-                key);
-
             throw new InvalidOperationException(
                 $"Failed to load original image \"{entry.FileName}\".",
                 ex);
@@ -208,7 +160,7 @@ public sealed class ImageCachePipeline(
     {
         if (_mode == WarmthMode.Cold)
         {
-            progress?.Report(1);
+            progress?.Report(AppNumericConstants.ProgressMaximum);
 
             return;
         }
@@ -224,7 +176,7 @@ public sealed class ImageCachePipeline(
 
         if (eligible.Count == 0)
         {
-            progress?.Report(1);
+            progress?.Report(AppNumericConstants.ProgressMaximum);
 
             return;
         }
@@ -253,9 +205,9 @@ public sealed class ImageCachePipeline(
                     progress?.Report((double)processed / eligible.Count);
 
                     budget += existing.Value.Length;
-                    if (budget >= AppConstants.PreloadRamBudgetBytes)
+                    if (budget >= AppNumericConstants.PreloadRamBudgetBytes)
                     {
-                        progress?.Report(1);
+                        progress?.Report(AppNumericConstants.ProgressMaximum);
 
                         return;
                     }
@@ -283,7 +235,7 @@ public sealed class ImageCachePipeline(
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (budget >= AppConstants.PreloadRamBudgetBytes)
+            if (budget >= AppNumericConstants.PreloadRamBudgetBytes)
             {
                 break;
             }
@@ -325,7 +277,7 @@ public sealed class ImageCachePipeline(
             }
         }
 
-        progress?.Report(1);
+        progress?.Report(AppNumericConstants.ProgressMaximum);
     }
 
     private static void LogBackgroundError(

@@ -48,9 +48,9 @@ public static class GalleryScanner
     {
         var cacheKey = string.Concat(
             file.FullName,
-            AppConstants.CacheKeySeparator,
+            AppInvariantStringConstants.CacheKeySeparator,
             file.LastWriteTimeUtc.Ticks,
-            AppConstants.CacheKeySeparator,
+            AppInvariantStringConstants.CacheKeySeparator,
             file.Length);
         var extension = file.Extension.ToLowerInvariant();
         var isComplicated = ImageFormatHelper.IsComplicated(extension);

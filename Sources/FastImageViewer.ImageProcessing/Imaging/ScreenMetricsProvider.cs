@@ -27,10 +27,10 @@ public static class ScreenMetricsProvider
             return new ScreenMetrics(
                 topLevel.ClientSize.Width.EnsureDimensionWithinInt32Range(nameof(topLevel.ClientSize.Width)),
                 topLevel.ClientSize.Height.EnsureDimensionWithinInt32Range(nameof(topLevel.ClientSize.Height)),
-                AppConstants.DefaultDpi);
+                AppNumericConstants.DefaultDpi);
         }
 
-        var dpi = AppConstants.DefaultDpi * topLevel.RenderScaling;
+        var dpi = AppNumericConstants.DefaultDpi * topLevel.RenderScaling;
 
         return new ScreenMetrics(
             screen.Bounds.Width,

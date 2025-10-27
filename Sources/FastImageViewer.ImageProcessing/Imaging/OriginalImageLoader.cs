@@ -33,7 +33,7 @@ public static class OriginalImageLoader
                 Access = FileAccess.Read,
                 Mode = FileMode.Open,
                 Share = FileShare.Read,
-                BufferSize = AppConstants.ImageFileReadBufferSize,
+                BufferSize = AppNumericConstants.ImageFileReadBufferSize,
                 Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
             });
         cancellationToken.ThrowIfCancellationRequested();
@@ -45,33 +45,33 @@ public static class OriginalImageLoader
                 cancellationToken)
             .ConfigureAwait(false);
 
-        var density = image.Density ?? new Density(AppConstants.DefaultDpi);
+        var density = image.Density ?? new Density(AppNumericConstants.DefaultDpi);
         var dpi = density.X > 0
             ? density.X
-            : AppConstants.DefaultDpi;
+            : AppNumericConstants.DefaultDpi;
         image.Settings.SetDefine(
             MagickFormat.WebP,
-            AppConstants.WebpLosslessDefineName,
-            AppConstants.WebpLosslessDefineValue);
+            AppInvariantStringConstants.WebpLosslessDefineName,
+            AppInvariantStringConstants.WebpLosslessDefineValue);
         image.Settings.SetDefine(
             MagickFormat.WebP,
-            AppConstants.WebpMethodDefineName,
-            AppConstants.WebpMethodDefineValue);
+            AppInvariantStringConstants.WebpMethodDefineName,
+            AppInvariantStringConstants.WebpMethodDefineValue);
         image.Settings.SetDefine(
             MagickFormat.WebP,
-            AppConstants.WebpAlphaQualityDefineName,
-            AppConstants.WebpAlphaQualityDefineValue);
+            AppInvariantStringConstants.WebpAlphaQualityDefineName,
+            AppInvariantStringConstants.WebpAlphaQualityDefineValue);
         var bytes = image.ToByteArray(MagickFormat.WebP);
 
         image.Settings.RemoveDefine(
             MagickFormat.WebP,
-            AppConstants.WebpLosslessDefineName);
+            AppInvariantStringConstants.WebpLosslessDefineName);
         image.Settings.RemoveDefine(
             MagickFormat.WebP,
-            AppConstants.WebpMethodDefineName);
+            AppInvariantStringConstants.WebpMethodDefineName);
         image.Settings.RemoveDefine(
             MagickFormat.WebP,
-            AppConstants.WebpAlphaQualityDefineName);
+            AppInvariantStringConstants.WebpAlphaQualityDefineName);
         var metadata = new ImageMetadata(
             image.Width.EnsureDimensionWithinInt32Range(nameof(image.Width)),
             image.Height.EnsureDimensionWithinInt32Range(nameof(image.Height)),
