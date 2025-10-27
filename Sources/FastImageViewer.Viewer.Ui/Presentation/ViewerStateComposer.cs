@@ -5,18 +5,14 @@
 
 using FastImageViewer.ImageProcessing.Gallery;
 using FastImageViewer.Resources;
-using FastImageViewer.Shared.FastImageViewer.Configuration;
 
 namespace FastImageViewer.Viewer.Ui.Presentation;
 
 /// <summary>
 /// Builds <see cref="ViewerState"/> instances from controller data.
 /// </summary>
-/// <param name="mode">The warm-up mode that governs viewer behavior.</param>
-internal sealed class ViewerStateComposer(WarmthMode mode)
+internal static class ViewerStateComposer
 {
-    private readonly WarmthMode _mode = mode;
-
     /// <summary>
     /// Composes a <see cref="ViewerState"/> snapshot for the supplied controller data.
     /// </summary>
@@ -25,7 +21,7 @@ internal sealed class ViewerStateComposer(WarmthMode mode)
     /// <param name="isCaching">Indicates whether cache warming is currently in progress.</param>
     /// <param name="cachingProgress">The cache warming progress value.</param>
     /// <returns>The composed viewer state.</returns>
-    public ViewerState Compose(
+    public static ViewerState Compose(
         GalleryNavigator? navigator,
         ImageDisplayCoordinator display,
         bool isCaching,
@@ -66,7 +62,7 @@ internal sealed class ViewerStateComposer(WarmthMode mode)
     /// <param name="isCaching">Indicates whether cache warming is currently in progress.</param>
     /// <param name="cachingProgress">The cache warming progress value.</param>
     /// <returns>The composed viewer state.</returns>
-    private ViewerState CreateEmptyState(
+    private static ViewerState CreateEmptyState(
         ImageDisplayCoordinator display,
         bool isCaching,
         double cachingProgress)
@@ -87,11 +83,11 @@ internal sealed class ViewerStateComposer(WarmthMode mode)
             display.ErrorMessage);
     }
 
-    private ToggleInfo DetermineToggle(
+    private static ToggleInfo DetermineToggle(
         ImageDisplayCoordinator display,
         bool isCaching)
     {
-        if ((_mode == WarmthMode.Cold) || isCaching)
+        if (isCaching)
         {
             return new ToggleInfo(
                 false,

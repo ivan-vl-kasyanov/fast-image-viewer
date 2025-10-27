@@ -7,7 +7,6 @@ using System.Collections.Concurrent;
 
 using FastImageViewer.ImageProcessing.Imaging;
 using FastImageViewer.Resources;
-using FastImageViewer.Shared.FastImageViewer.Configuration;
 
 using Serilog;
 
@@ -19,10 +18,8 @@ namespace FastImageViewer.Cache;
 /// Implements image caching logic across memory and distributed caches.
 /// </summary>
 /// <param name="fusionCache">The fusion cache used to store image data.</param>
-/// <param name="mode">The current warm-up mode.</param>
 public sealed class ImageCachePipeline(
-    IFusionCache fusionCache,
-    WarmthMode mode) : ICachePipeline
+    IFusionCache fusionCache) : ICachePipeline
 {
     private static readonly TimeSpan MemoryDuration = TimeSpan.FromMinutes(AppNumericConstants.MemoryCacheDurationMinutes);
     private static readonly TimeSpan JitterMaxDuration = TimeSpan.FromMinutes(AppNumericConstants.MemoryCacheJitterMinutes);
@@ -30,7 +27,6 @@ public sealed class ImageCachePipeline(
     private static readonly TimeSpan DistributedCacheDuration = TimeSpan.FromDays(AppNumericConstants.MemoryCacheDistributedDays);
 
     private readonly IFusionCache _fusionCache = fusionCache;
-    private readonly WarmthMode _mode = mode;
     private readonly ConcurrentDictionary<string, ImageMetadata> _metadataCache = new();
 
     private readonly FusionCacheEntryOptions _cacheOptions = new()
@@ -57,14 +53,12 @@ public sealed class ImageCachePipeline(
         ScreenMetrics metrics,
         CancellationToken cancellationToken)
     {
-        if (!entry.IsDiskCacheEligible ||
-            (_mode == WarmthMode.Cold))
+        if (!entry.IsDiskCacheEligible)
         {
             return null;
         }
 
         var key = entry.CacheKey;
-
         try
         {
             var bytes = await GetCachedReducedBytesAsync(
@@ -149,12 +143,9 @@ public sealed class ImageCachePipeline(
         IProgress<double>? progress,
         CancellationToken cancellationToken)
     {
-        if (!ShouldWarmCache(progress))
-        {
-            return;
-        }
-
-        var eligible = CollectEligibleEntries(entries);
+        var eligible = CollectEligibleEntries(
+            entries,
+            cancellationToken);
         if (eligible.Count == 0)
         {
             ReportWarmupCompletion(progress);
@@ -174,11 +165,15 @@ public sealed class ImageCachePipeline(
             .ConfigureAwait(false);
     }
 
-    private static List<ImageEntry> CollectEligibleEntries(IReadOnlyList<ImageEntry> entries)
+    private static List<ImageEntry> CollectEligibleEntries(
+        IReadOnlyList<ImageEntry> entries,
+        CancellationToken cancellationToken)
     {
         var eligible = new List<ImageEntry>(entries.Count);
         foreach (var entry in entries)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (entry.IsDiskCacheEligible)
             {
                 eligible.Add(entry);
@@ -210,18 +205,6 @@ public sealed class ImageCachePipeline(
     private static void ReportWarmupCompletion(IProgress<double>? progress)
     {
         progress?.Report(AppNumericConstants.ProgressMaximum);
-    }
-
-    private bool ShouldWarmCache(IProgress<double>? progress)
-    {
-        if (_mode != WarmthMode.Cold)
-        {
-            return true;
-        }
-
-        ReportWarmupCompletion(progress);
-
-        return false;
     }
 
     private async Task WarmEligibleEntriesAsync(

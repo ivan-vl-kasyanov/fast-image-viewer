@@ -176,8 +176,6 @@ internal sealed class ImageDisplayCoordinator(
         bool preferReduced,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         if (entry is null)
         {
             await ClearPresentationAsync(cancellationToken);
@@ -206,8 +204,6 @@ internal sealed class ImageDisplayCoordinator(
         ScreenMetrics metrics,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         if (LastPresented != PresentationKind.Original)
         {
             var original = await EnsureOriginalAsync(cancellationToken);

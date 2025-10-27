@@ -8,7 +8,6 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 
 using FastImageViewer.Resources;
-using FastImageViewer.Shared.FastImageViewer.Configuration;
 using FastImageViewer.Shared.FastImageViewer.Threading;
 using FastImageViewer.Viewer.Ui.Presentation;
 
@@ -33,8 +32,7 @@ internal sealed partial class MainWindow : Window
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindow"/> class.
     /// </summary>
-    /// <param name="mode">The warm-up mode determining startup behavior.</param>
-    public MainWindow(WarmthMode mode)
+    public MainWindow()
     {
         InitializeComponent();
 
@@ -52,7 +50,6 @@ internal sealed partial class MainWindow : Window
 
         var presenter = new ImagePresenter(displayImage);
         _controller = new MainController(
-            mode,
             presenter);
         _controller.StateChanged += OnStateChanged;
         _controller.CloseRequested += OnCloseRequested;

@@ -30,7 +30,6 @@ internal static class MagickImageLoader
         ArgumentNullException.ThrowIfNull(processor);
 
         cancellationToken.ThrowIfCancellationRequested();
-
         await using var fileStream = new FileStream(
             entry.FullPath,
             new FileStreamOptions

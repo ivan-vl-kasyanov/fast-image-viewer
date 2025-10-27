@@ -78,12 +78,7 @@ public static class AppInvariantStringConstants
     /// <summary>
     /// The file name used for the local machine cache database.
     /// </summary>
-    public const string LocalMachineCacheFileName = "LocalMachine.db";
-
-    /// <summary>
-    /// The file name for the auto-generated gallery readme file.
-    /// </summary>
-    public const string GalleryReadmeFileName = "README.gallery.txt";
+    public const string LocalMachineCacheFileName = "LocalMachine.sqlite3";
 
     /// <summary>
     /// The separator used when building cache keys.
@@ -94,21 +89,6 @@ public static class AppInvariantStringConstants
     /// The file name for the rolling log file.
     /// </summary>
     public const string LogFileName = "FastImageViewer.log";
-
-    /// <summary>
-    /// The command-line argument prefix for selecting the warm-up mode.
-    /// </summary>
-    public const string CommandLineModeParameterPrefix = "--mode=";
-
-    /// <summary>
-    /// The command-line value representing the hot warm-up mode.
-    /// </summary>
-    public const string CommandLineModeHotValue = "hot";
-
-    /// <summary>
-    /// The command-line value representing the clean warm-up mode.
-    /// </summary>
-    public const string CommandLineModeCleanValue = "clean";
 
     /// <summary>
     /// The WebP define that enables lossless encoding.

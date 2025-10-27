@@ -11,11 +11,6 @@ namespace FastImageViewer.Resources;
 public static class AppLocalizedStrings
 {
     /// <summary>
-    /// The contents of the auto-generated gallery readme file.
-    /// </summary>
-    public const string GalleryReadmeContent = "Copy images into this folder to browse them with FastImageViewer.";
-
-    /// <summary>
     /// The fallback window title when no file is selected.
     /// </summary>
     public const string WindowTitleFallback = "Fast Image Viewer";

@@ -7,8 +7,6 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
-using FastImageViewer.Shared.FastImageViewer.Configuration;
-
 namespace FastImageViewer.Viewer.Ui;
 
 /// <summary>
@@ -27,9 +25,7 @@ internal sealed class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktopLifetime)
         {
-            var mode = AppStartupContext.GetMode();
-            var mainWindow = new MainWindow(
-                mode);
+            var mainWindow = new MainWindow();
             desktopLifetime.MainWindow = mainWindow;
         }
 

@@ -38,6 +38,11 @@ public sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : IDis
         string key,
         CancellationToken token = default)
     {
+        if (!_options.ContainsKey(key))
+        {
+            return null;
+        }
+
         try
         {
             return await _blobCache

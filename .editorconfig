@@ -328,3 +328,6 @@ dotnet_diagnostic.S1134.severity = none
 
 # S1135: Track uses of "TODO" tags
 dotnet_diagnostic.S1135.severity = none
+
+# S3263: Move this field's initializer into a static constructor | Conflict with the S3963 rule
+dotnet_diagnostic.S3263.severity = none

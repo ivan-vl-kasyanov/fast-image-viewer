@@ -58,6 +58,8 @@ public static class ImageReducer
             image,
             metrics);
 
+        cancellationToken.ThrowIfCancellationRequested();
+
         ApplyTargetDensity(
             image,
             targetDpi);
@@ -68,11 +70,15 @@ public static class ImageReducer
             shouldResize);
         ConfigureReducedEncoding(image);
 
+        cancellationToken.ThrowIfCancellationRequested();
+
         var bytes = EncodeReducedImage(image);
         var metadata = CreateMetadata(
             targetWidth,
             targetHeight,
             targetDpi);
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         return new ImageData(
             bytes,

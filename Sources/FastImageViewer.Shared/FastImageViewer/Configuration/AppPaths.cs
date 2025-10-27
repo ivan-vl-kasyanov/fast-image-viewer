@@ -12,7 +12,7 @@ namespace FastImageViewer.Shared.FastImageViewer.Configuration;
 /// </summary>
 public static class AppPaths
 {
-    private static readonly Lock _syncRoot = new();
+    private static readonly SemaphoreSlim _syncRoot = new(1, 1);
     private static string? _galleryDirectory;
     private static string? _cacheDirectory;
 
@@ -29,7 +29,8 @@ public static class AppPaths
                 return _galleryDirectory;
             }
 
-            lock (_syncRoot)
+            _syncRoot.Wait();
+            try
             {
                 if (_galleryDirectory is not null)
                 {
@@ -44,19 +45,13 @@ public static class AppPaths
                     Directory.CreateDirectory(root);
                 }
 
-                var readmePath = Path.Combine(
-                    root,
-                    AppInvariantStringConstants.GalleryReadmeFileName);
-                if (!File.Exists(readmePath))
-                {
-                    File.WriteAllText(
-                        readmePath,
-                        AppLocalizedStrings.GalleryReadmeContent);
-                }
-
                 _galleryDirectory = root;
 
                 return _galleryDirectory;
+            }
+            finally
+            {
+                _syncRoot.Release();
             }
         }
     }
@@ -75,7 +70,8 @@ public static class AppPaths
                 return _cacheDirectory;
             }
 
-            lock (_syncRoot)
+            _syncRoot.Wait();
+            try
             {
                 if (_cacheDirectory is not null &&
                     Directory.Exists(_cacheDirectory))
@@ -94,6 +90,10 @@ public static class AppPaths
                 _cacheDirectory = root;
 
                 return _cacheDirectory;
+            }
+            finally
+            {
+                _syncRoot.Release();
             }
         }
     }

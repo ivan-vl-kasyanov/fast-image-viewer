@@ -15,7 +15,8 @@ public static class AppImageExtensionConstants
     /// <summary>
     /// The common file extensions that receive special processing.
     /// </summary>
-    public static readonly ImmutableArray<string> ComplicatedImageExtensions = ImmutableArray.Create(
+    public static readonly ImmutableHashSet<string> ComplicatedImageExtensions = ImmutableHashSet.Create(
+        ExtensionComparer,
         ExtensionHeic,
         ExtensionHeif,
         ExtensionTif,
@@ -46,7 +47,8 @@ public static class AppImageExtensionConstants
     /// <summary>
     /// The commonly supported file extensions handled without extra processing.
     /// </summary>
-    public static readonly ImmutableArray<string> CommonImageExtensions = ImmutableArray.Create(
+    public static readonly ImmutableHashSet<string> CommonImageExtensions = ImmutableHashSet.Create(
+        ExtensionComparer,
         ExtensionPng,
         ExtensionJpg,
         ExtensionJpeg,
@@ -88,4 +90,6 @@ public static class AppImageExtensionConstants
     private const string ExtensionTif = ".tif";
     private const string ExtensionTiff = ".tiff";
     private const string ExtensionWebp = ".webp";
+
+    private static readonly IEqualityComparer<string> ExtensionComparer = StringComparer.OrdinalIgnoreCase;
 }

@@ -33,20 +33,9 @@ internal static class Program
 
         try
         {
-            var parseResult = WarmthModeParser.Parse(args);
-            var cacheDirectory = AppPaths.CacheDirectory;
-            if (parseResult.Mode == WarmthMode.Clean)
-            {
-                CacheCleaner.Run(cacheDirectory);
+            CacheInitializer.Configure(AppPaths.CacheDirectory);
 
-                return;
-            }
-
-            CacheInitializer.Configure(cacheDirectory);
-
-            AppStartupContext.SetMode(parseResult.Mode);
-
-            ViewerApplication.Start(parseResult.RemainingArgs);
+            ViewerApplication.Start(args);
         }
         catch (Exception ex)
         {

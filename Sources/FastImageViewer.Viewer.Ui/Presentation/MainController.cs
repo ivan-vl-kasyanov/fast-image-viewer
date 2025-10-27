@@ -12,7 +12,6 @@ using FastImageViewer.Cache;
 using FastImageViewer.ImageProcessing.Gallery;
 using FastImageViewer.ImageProcessing.Imaging;
 using FastImageViewer.Resources;
-using FastImageViewer.Shared.FastImageViewer.Configuration;
 
 namespace FastImageViewer.Viewer.Ui.Presentation;
 
@@ -21,10 +20,8 @@ namespace FastImageViewer.Viewer.Ui.Presentation;
 /// </summary>
 internal sealed class MainController : IDisposable
 {
-    private readonly WarmthMode _mode;
     private readonly ImageCachePipeline _cachePipeline;
     private readonly ImageDisplayCoordinator _displayCoordinator;
-    private readonly ViewerStateComposer _stateComposer;
     private GalleryNavigator? _navigator;
     private ScreenMetrics _screenMetrics;
     private bool _initialized;
@@ -34,20 +31,14 @@ internal sealed class MainController : IDisposable
     /// <summary>
     /// Initializes a new instance of the <see cref="MainController"/> class.
     /// </summary>
-    /// <param name="mode">The current warm-up mode.</param>
     /// <param name="presenter">The presenter responsible for showing images.</param>
     public MainController(
-        WarmthMode mode,
         ImagePresenter presenter)
     {
-        _mode = mode;
-        _stateComposer = new ViewerStateComposer(mode);
-
         var distributed = new AkavacheDistributedCacheAdapter(CacheDatabase.LocalMachine);
         var fusionCache = FusionCacheFactory.Create(distributed);
         _cachePipeline = new ImageCachePipeline(
-            fusionCache,
-            mode);
+            fusionCache);
         _displayCoordinator = new ImageDisplayCoordinator(
             presenter,
             _cachePipeline,
@@ -117,13 +108,10 @@ internal sealed class MainController : IDisposable
             return;
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
-
         var next = _navigator.MoveNext();
-
         await ShowEntryAsync(
             next,
-            _mode != WarmthMode.Cold,
+            true,
             cancellationToken);
     }
 
@@ -140,13 +128,10 @@ internal sealed class MainController : IDisposable
             return;
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
-
         var previous = _navigator.MovePrevious();
-
         await ShowEntryAsync(
             previous,
-            _mode != WarmthMode.Cold,
+            true,
             cancellationToken);
     }
 
@@ -158,17 +143,10 @@ internal sealed class MainController : IDisposable
     /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     public async Task ToggleOriginalAsync(CancellationToken cancellationToken)
     {
-        if (_mode == WarmthMode.Cold)
-        {
-            return;
-        }
-
         if (_displayCoordinator.CurrentEntry is null)
         {
             return;
         }
-
-        cancellationToken.ThrowIfCancellationRequested();
 
         await _displayCoordinator.ToggleOriginalAsync(
             _screenMetrics,
@@ -198,8 +176,6 @@ internal sealed class MainController : IDisposable
         bool preferReduced,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         await _displayCoordinator.ShowEntryAsync(
             entry,
             _screenMetrics,
@@ -216,11 +192,13 @@ internal sealed class MainController : IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var state = _stateComposer.Compose(
+        var state = ViewerStateComposer.Compose(
             _navigator,
             _displayCoordinator,
             _isCaching,
             _cachingProgress);
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         PublishState(state);
     }
@@ -229,8 +207,6 @@ internal sealed class MainController : IDisposable
         TopLevel topLevel,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         _screenMetrics = await FetchScreenMetricsAsync(
             topLevel,
             cancellationToken);
@@ -252,7 +228,7 @@ internal sealed class MainController : IDisposable
 
         await ShowEntryAsync(
             _navigator.Current,
-            ShouldPreferReduced(),
+            true,
             cancellationToken);
     }
 
@@ -265,20 +241,10 @@ internal sealed class MainController : IDisposable
                 DispatcherPriority.Normal);
     }
 
-    private bool ShouldPreferReduced()
-    {
-        return _mode != WarmthMode.Cold;
-    }
-
     private async Task WarmCacheAsync(
         IReadOnlyList<ImageEntry> entries,
         CancellationToken cancellationToken)
     {
-        if (_mode != WarmthMode.Hot)
-        {
-            return;
-        }
-
         _isCaching = true;
         _cachingProgress = AppNumericConstants.ProgressMinimum;
         UpdateState(cancellationToken);
