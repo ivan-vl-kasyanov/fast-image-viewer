@@ -3,7 +3,9 @@
 // This software is licensed under the GNU Affero General Public License Version 3. See LICENSE for details.
 // </copyright>
 
-namespace FastImageViewer.ImageProcessing.Imaging;
+using FastImageViewer.ImageProcessing.Imaging;
+
+namespace FastImageViewer.ImageProcessing.Models;
 
 /// <summary>
 /// Holds image bytes paired with the associated metadata.

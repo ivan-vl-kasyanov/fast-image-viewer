@@ -3,7 +3,7 @@
 // This software is licensed under the GNU Affero General Public License Version 3. See LICENSE for details.
 // </copyright>
 
-using FastImageViewer.ImageProcessing.Imaging;
+using FastImageViewer.ImageProcessing.Models;
 
 namespace FastImageViewer.ImageProcessing.Gallery;
 

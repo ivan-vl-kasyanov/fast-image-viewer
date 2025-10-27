@@ -5,6 +5,7 @@
 
 using Avalonia.Controls;
 
+using FastImageViewer.ImageProcessing.Models;
 using FastImageViewer.Resources;
 
 namespace FastImageViewer.ImageProcessing.Imaging;

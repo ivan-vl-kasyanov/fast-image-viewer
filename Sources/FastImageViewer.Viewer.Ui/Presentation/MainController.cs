@@ -11,7 +11,9 @@ using Avalonia.Threading;
 using FastImageViewer.Cache;
 using FastImageViewer.ImageProcessing.Gallery;
 using FastImageViewer.ImageProcessing.Imaging;
+using FastImageViewer.ImageProcessing.Models;
 using FastImageViewer.Resources;
+using FastImageViewer.Viewer.Ui.Models;
 
 namespace FastImageViewer.Viewer.Ui.Presentation;
 

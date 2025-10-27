@@ -5,7 +5,9 @@
 
 using System.Collections.Concurrent;
 
+using FastImageViewer.Cache.Models;
 using FastImageViewer.ImageProcessing.Imaging;
+using FastImageViewer.ImageProcessing.Models;
 using FastImageViewer.Resources;
 
 using Serilog;
@@ -18,8 +20,7 @@ namespace FastImageViewer.Cache;
 /// Implements image caching logic across memory and distributed caches.
 /// </summary>
 /// <param name="fusionCache">The fusion cache used to store image data.</param>
-public sealed class ImageCachePipeline(
-    IFusionCache fusionCache) : ICachePipeline
+public sealed class ImageCachePipeline(IFusionCache fusionCache) : ICachePipeline
 {
     private static readonly TimeSpan MemoryDuration = TimeSpan.FromMinutes(AppNumericConstants.MemoryCacheDurationMinutes);
     private static readonly TimeSpan JitterMaxDuration = TimeSpan.FromMinutes(AppNumericConstants.MemoryCacheJitterMinutes);
@@ -154,7 +155,7 @@ public sealed class ImageCachePipeline(
         }
 
         var state = CreateWarmupState(
-            eligible.Count,
+            eligible,
             progress);
 
         await WarmEligibleEntriesAsync(
@@ -184,11 +185,11 @@ public sealed class ImageCachePipeline(
     }
 
     private static WarmupState CreateWarmupState(
-        int total,
+        IReadOnlyList<ImageEntry> entries,
         IProgress<double>? progress)
     {
         return new WarmupState(
-            total,
+            entries,
             progress);
     }
 
@@ -265,7 +266,9 @@ public sealed class ImageCachePipeline(
                     entry.CacheKey,
                     existing.Value);
 
-                if (state.RegisterProcessed(existing.Value))
+                if (state.RegisterProcessed(
+                        entry,
+                        existing.Value))
                 {
                     break;
                 }
@@ -312,7 +315,9 @@ public sealed class ImageCachePipeline(
                     entry.CacheKey,
                     bytes);
 
-                if (state.RegisterProcessed(bytes))
+                if (state.RegisterProcessed(
+                        entry,
+                        bytes))
                 {
                     break;
                 }
@@ -375,27 +380,53 @@ public sealed class ImageCachePipeline(
     }
 
     private sealed class WarmupState(
-        int total,
+        IReadOnlyList<ImageEntry> entries,
         IProgress<double>? progress)
     {
-        private readonly int _total = total;
+        private readonly long _totalLength = CalculateTotalLength(entries);
+        private readonly int _totalCount = entries.Count;
         private readonly IProgress<double>? _progress = progress;
 
-        public long Budget { get; private set; }
+        private long _budget;
 
-        public bool IsBudgetExceeded => Budget >= AppNumericConstants.PreloadRamBudgetBytes;
+        private long _processedLength;
 
-        private int Processed { get; set; }
+        private int _processedCount;
 
-        public bool RegisterProcessed(byte[] bytes)
+        public bool IsBudgetExceeded => _budget >= AppNumericConstants.PreloadRamBudgetBytes;
+
+        public bool RegisterProcessed(
+            ImageEntry entry,
+            byte[] bytes)
         {
-            Processed++;
-            if (_total > 0)
-            {
-                _progress?.Report((double)Processed / _total);
-            }
+            _processedCount++;
 
-            Budget += bytes.LongLength;
+            _budget += bytes.LongLength;
+
+            if (_totalLength > 0)
+            {
+                var length = entry.LengthBytes;
+                if (length > 0)
+                {
+                    if (long.MaxValue - _processedLength < length)
+                    {
+                        _processedLength = long.MaxValue;
+                    }
+                    else
+                    {
+                        _processedLength += length;
+                    }
+                }
+
+                var progression = Math.Min(
+                    (double)_processedLength / _totalLength,
+                    AppNumericConstants.ProgressMaximum);
+                _progress?.Report(progression);
+            }
+            else if (_totalCount > 0)
+            {
+                _progress?.Report((double)_processedCount / _totalCount);
+            }
 
             return IsBudgetExceeded;
         }
@@ -403,6 +434,27 @@ public sealed class ImageCachePipeline(
         public void ReportCompletion()
         {
             _progress?.Report(AppNumericConstants.ProgressMaximum);
+        }
+
+        private static long CalculateTotalLength(IReadOnlyList<ImageEntry> entries)
+        {
+            var total = 0L;
+            foreach (var length in entries.Select(static entry => entry.LengthBytes))
+            {
+                if (length <= 0)
+                {
+                    continue;
+                }
+
+                if (long.MaxValue - total < length)
+                {
+                    return long.MaxValue;
+                }
+
+                total += length;
+            }
+
+            return total;
         }
     }
 }

@@ -9,6 +9,7 @@ using Avalonia.Markup.Xaml;
 
 using FastImageViewer.Resources;
 using FastImageViewer.Shared.FastImageViewer.Threading;
+using FastImageViewer.Viewer.Ui.Models;
 using FastImageViewer.Viewer.Ui.Presentation;
 
 namespace FastImageViewer.Viewer.Ui;

@@ -6,6 +6,7 @@
 using System.Collections.Immutable;
 
 using FastImageViewer.ImageProcessing.Imaging;
+using FastImageViewer.ImageProcessing.Models;
 using FastImageViewer.Resources;
 using FastImageViewer.Shared.FastImageViewer.Configuration;
 

@@ -4,7 +4,9 @@
 // </copyright>
 
 using FastImageViewer.Cache;
-using FastImageViewer.ImageProcessing.Imaging;
+using FastImageViewer.Cache.Models;
+using FastImageViewer.ImageProcessing.Models;
+using FastImageViewer.Viewer.Ui.Models;
 
 using Serilog;
 

@@ -5,6 +5,7 @@
 
 using FastImageViewer.ImageProcessing.Gallery;
 using FastImageViewer.Resources;
+using FastImageViewer.Viewer.Ui.Models;
 
 namespace FastImageViewer.Viewer.Ui.Presentation;
 

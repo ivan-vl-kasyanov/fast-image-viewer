@@ -3,8 +3,9 @@
 // This software is licensed under the GNU Affero General Public License Version 3. See LICENSE for details.
 // </copyright>
 
-using FastImageViewer.Cache;
-using FastImageViewer.ImageProcessing.Imaging;
+using FastImageViewer.Cache.Models;
+using FastImageViewer.ImageProcessing.Models;
+using FastImageViewer.Viewer.Ui.Models;
 
 namespace FastImageViewer.Viewer.Ui.Presentation;
 

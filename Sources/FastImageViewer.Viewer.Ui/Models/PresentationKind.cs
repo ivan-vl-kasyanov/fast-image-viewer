@@ -3,7 +3,7 @@
 // This software is licensed under the GNU Affero General Public License Version 3. See LICENSE for details.
 // </copyright>
 
-namespace FastImageViewer.Viewer.Ui.Presentation;
+namespace FastImageViewer.Viewer.Ui.Models;
 
 /// <summary>
 /// Identifies which version of the image is currently shown.

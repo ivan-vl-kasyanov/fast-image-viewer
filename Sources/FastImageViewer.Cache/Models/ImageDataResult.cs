@@ -5,7 +5,7 @@
 
 using FastImageViewer.ImageProcessing.Imaging;
 
-namespace FastImageViewer.Cache;
+namespace FastImageViewer.Cache.Models;
 
 /// <summary>
 /// Represents cached image data together with its origin details.
