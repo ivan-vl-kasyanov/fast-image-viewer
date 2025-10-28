@@ -76,9 +76,9 @@ public static class AppInvariantStringConstants
     public const string CacheFolderName = "Cache";
 
     /// <summary>
-    /// The file name used for the local machine cache database.
+    /// The file name used for the preview image cache database.
     /// </summary>
-    public const string LocalMachineCacheFileName = "LocalMachine.sqlite3";
+    public const string PreviewImageCacheName = "PreviewImageCache.sqlite3";
 
     /// <summary>
     /// The separator used when building cache keys.

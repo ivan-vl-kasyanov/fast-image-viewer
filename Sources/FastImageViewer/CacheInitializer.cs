@@ -24,13 +24,13 @@ internal static class CacheInitializer
     /// <param name="cacheDirectory">The directory that stores cache state.</param>
     public static void Configure(string cacheDirectory)
     {
-        var localMachinePath = Path.Combine(
+        var previewImageCachePath = Path.Combine(
             cacheDirectory,
-            AppInvariantStringConstants.LocalMachineCacheFileName);
+            AppInvariantStringConstants.PreviewImageCacheName);
         var scheduler = CacheDatabase.TaskpoolScheduler ?? TaskPoolScheduler.Default;
         var serializer = new SystemJsonSerializer();
         var customCache = new SqliteBlobCache(
-            localMachinePath,
+            previewImageCachePath,
             serializer,
             scheduler,
             false);

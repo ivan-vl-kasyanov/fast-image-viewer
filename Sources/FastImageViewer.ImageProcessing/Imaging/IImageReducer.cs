@@ -7,6 +7,9 @@ using FastImageViewer.ImageProcessing.Models;
 
 namespace FastImageViewer.ImageProcessing.Imaging;
 
+// TODO: Replace the "Magick.NET-Q16-HDRI-AnyCPU" NuGet package with
+// the "Magick.NET-Q16-HDRI-x64" NuGet package, when its vulnerability will be fixed.
+
 /// <summary>
 /// Defines helpers for generating reduced image representations.
 /// </summary>

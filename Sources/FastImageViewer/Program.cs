@@ -5,8 +5,9 @@
 
 using System.Runtime.Versioning;
 
+using Avalonia;
+
 using FastImageViewer.Shared.FastImageViewer.Configuration;
-using FastImageViewer.Viewer.Ui;
 
 using Serilog;
 
@@ -36,7 +37,9 @@ internal static class Program
         {
             CacheInitializer.Configure(applicationPaths.CacheDirectory);
 
-            ViewerApplication.Start(args);
+            AvaloniaInitializer
+                .BuildAvaloniaApplication()
+                .StartWithClassicDesktopLifetime(args);
         }
         catch (Exception ex)
         {
