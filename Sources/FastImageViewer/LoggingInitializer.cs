@@ -19,13 +19,16 @@ internal static class LoggingInitializer
     /// <summary>
     /// Attempts to configure the application logger.
     /// </summary>
+    /// <param name="applicationPaths">The application paths used to determine log storage.</param>
     /// <returns><c>true</c> when logging is ready; otherwise, <c>false</c>.</returns>
-    public static bool TryConfigure()
+    public static bool TryConfigure(IApplicationPaths applicationPaths)
     {
+        ArgumentNullException.ThrowIfNull(applicationPaths);
+
         try
         {
             var logFilePath = Path.Combine(
-                AppPaths.CacheDirectory,
+                applicationPaths.CacheDirectory,
                 AppInvariantStringConstants.LogFileName);
 
             Log.Logger = new LoggerConfiguration()

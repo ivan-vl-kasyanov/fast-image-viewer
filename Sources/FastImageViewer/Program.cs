@@ -26,14 +26,15 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        if (!LoggingInitializer.TryConfigure())
+        var applicationPaths = new ApplicationPaths();
+        if (!LoggingInitializer.TryConfigure(applicationPaths))
         {
             return;
         }
 
         try
         {
-            CacheInitializer.Configure(AppPaths.CacheDirectory);
+            CacheInitializer.Configure(applicationPaths.CacheDirectory);
 
             ViewerApplication.Start(args);
         }

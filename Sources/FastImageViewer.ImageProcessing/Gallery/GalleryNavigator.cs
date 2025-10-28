@@ -3,6 +3,8 @@
 // This software is licensed under the GNU Affero General Public License Version 3. See LICENSE for details.
 // </copyright>
 
+using System.Collections.Immutable;
+
 using FastImageViewer.ImageProcessing.Models;
 
 namespace FastImageViewer.ImageProcessing.Gallery;
@@ -11,9 +13,9 @@ namespace FastImageViewer.ImageProcessing.Gallery;
 /// Provides navigation helpers for an ordered list of gallery entries.
 /// </summary>
 /// <param name="entries">The image entries to navigate.</param>
-public sealed class GalleryNavigator(IReadOnlyList<ImageEntry> entries)
+public sealed class GalleryNavigator(IEnumerable<ImageEntry> entries)
 {
-    private readonly IReadOnlyList<ImageEntry> _entries = entries;
+    private readonly ImmutableList<ImageEntry> _entries = [.. entries];
 
     private int _index = 0;
 

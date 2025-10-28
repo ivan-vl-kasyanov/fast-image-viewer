@@ -21,7 +21,7 @@ public static class DimensionExtensions
         this double dimension,
         string propertyName)
     {
-        return dimension < int.MinValue || dimension > int.MaxValue
+        return (dimension < int.MinValue) || (dimension > int.MaxValue)
             ? throw new OverflowException(
                 $"The dimension \"{propertyName}\" value \"{dimension}\" is outside the Int32 range.")
             : Convert.ToInt32(dimension);

@@ -20,7 +20,12 @@ namespace FastImageViewer.Cache;
 /// Implements image caching logic across memory and distributed caches.
 /// </summary>
 /// <param name="fusionCache">The fusion cache used to store image data.</param>
-public sealed class ImageCachePipeline(IFusionCache fusionCache) : ICachePipeline
+/// <param name="imageReducer">The reducer used to generate reduced images.</param>
+/// <param name="originalImageLoader">The loader used for original images.</param>
+public sealed class ImageCachePipeline(
+    IFusionCache fusionCache,
+    IImageReducer imageReducer,
+    IOriginalImageLoader originalImageLoader) : ICachePipeline
 {
     private static readonly TimeSpan MemoryDuration = TimeSpan.FromMinutes(AppNumericConstants.MemoryCacheDurationMinutes);
     private static readonly TimeSpan JitterMaxDuration = TimeSpan.FromMinutes(AppNumericConstants.MemoryCacheJitterMinutes);
@@ -29,6 +34,8 @@ public sealed class ImageCachePipeline(IFusionCache fusionCache) : ICachePipelin
 
     private readonly IFusionCache _fusionCache = fusionCache;
     private readonly ConcurrentDictionary<string, ImageMetadata> _metadataCache = new();
+    private readonly IImageReducer _imageReducer = imageReducer;
+    private readonly IOriginalImageLoader _originalImageLoader = originalImageLoader;
 
     private readonly FusionCacheEntryOptions _cacheOptions = new()
     {
@@ -39,16 +46,7 @@ public sealed class ImageCachePipeline(IFusionCache fusionCache) : ICachePipelin
         DistributedCacheDuration = DistributedCacheDuration,
     };
 
-    /// <summary>
-    /// Retrieves a reduced image from cache or generates it when necessary.
-    /// </summary>
-    /// <param name="entry">The image entry identifying the source image.</param>
-    /// <param name="metrics">The screen metrics used to size the reduced image.</param>
-    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
-    /// <returns>
-    /// The cached or newly generated reduced image, or <c>null</c> when not applicable.
-    /// </returns>
-    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
+    /// <inheritdoc/>
     public async Task<ImageDataResult?> GetReducedAsync(
         ImageEntry entry,
         ScreenMetrics metrics,
@@ -91,21 +89,14 @@ public sealed class ImageCachePipeline(IFusionCache fusionCache) : ICachePipelin
         }
     }
 
-    /// <summary>
-    /// Retrieves the original image from cache or loads it from disk.
-    /// </summary>
-    /// <param name="entry">The image entry identifying the source image.</param>
-    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
-    /// <returns>The cached or newly loaded original image data.</returns>
-    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
-    /// <exception cref="InvalidOperationException"> Thrown when the original image cannot be loaded.</exception>
+    /// <inheritdoc/>
     public async Task<ImageDataResult> GetOriginalAsync(
         ImageEntry entry,
         CancellationToken cancellationToken)
     {
         try
         {
-            var data = await OriginalImageLoader.LoadAsync(
+            var data = await _originalImageLoader.LoadAsync(
                 entry,
                 cancellationToken);
 
@@ -127,17 +118,7 @@ public sealed class ImageCachePipeline(IFusionCache fusionCache) : ICachePipelin
         }
     }
 
-    /// <summary>
-    /// Warms the cache by pre-loading eligible reduced images.
-    /// </summary>
-    /// <param name="entries">The entries to process.</param>
-    /// <param name="metrics">The screen metrics used to size reduced images.</param>
-    /// <param name="progress">
-    /// The progress reporter for cache warming completion.
-    /// </param>
-    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
-    /// <returns>A task that completes when warming finishes.</returns>
-    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
+    /// <inheritdoc/>
     public async Task WarmAllAsync(
         IReadOnlyList<ImageEntry> entries,
         ScreenMetrics metrics,
@@ -355,7 +336,7 @@ public sealed class ImageCachePipeline(IFusionCache fusionCache) : ICachePipelin
         ScreenMetrics metrics,
         CancellationToken cancellationToken)
     {
-        var data = await ImageReducer.CreateReducedAsync(
+        var data = await _imageReducer.CreateReducedAsync(
             entry,
             metrics,
             cancellationToken);
@@ -373,7 +354,7 @@ public sealed class ImageCachePipeline(IFusionCache fusionCache) : ICachePipelin
             return metadata;
         }
 
-        var computed = ImageMetadataReader.FromBytes(bytes);
+        var computed = bytes.GetImageMetadata();
         _metadataCache[key] = computed;
 
         return computed;

@@ -3,8 +3,6 @@
 // This software is licensed under the GNU Affero General Public License Version 3. See LICENSE for details.
 // </copyright>
 
-using Akavache;
-
 using Avalonia.Controls;
 using Avalonia.Threading;
 
@@ -22,8 +20,10 @@ namespace FastImageViewer.Viewer.Ui.Presentation;
 /// </summary>
 internal sealed class MainController : IDisposable
 {
-    private readonly ImageCachePipeline _cachePipeline;
+    private readonly ICachePipeline _cachePipeline;
     private readonly ImageDisplayCoordinator _displayCoordinator;
+    private readonly IGalleryScanner _galleryScanner;
+    private readonly IScreenMetricsProvider _screenMetricsProvider;
     private GalleryNavigator? _navigator;
     private ScreenMetrics _screenMetrics;
     private bool _initialized;
@@ -34,17 +34,22 @@ internal sealed class MainController : IDisposable
     /// Initializes a new instance of the <see cref="MainController"/> class.
     /// </summary>
     /// <param name="presenter">The presenter responsible for showing images.</param>
+    /// <param name="cachePipeline">The cache pipeline used to retrieve image data.</param>
+    /// <param name="galleryScanner">The gallery scanner that discovers entries.</param>
+    /// <param name="screenMetricsProvider">The provider that supplies screen metrics.</param>
     public MainController(
-        ImagePresenter presenter)
+        ImagePresenter presenter,
+        ICachePipeline cachePipeline,
+        IGalleryScanner galleryScanner,
+        IScreenMetricsProvider screenMetricsProvider)
     {
-        var distributed = new AkavacheDistributedCacheAdapter(CacheDatabase.LocalMachine);
-        var fusionCache = FusionCacheFactory.Create(distributed);
-        _cachePipeline = new ImageCachePipeline(
-            fusionCache);
+        _cachePipeline = cachePipeline;
         _displayCoordinator = new ImageDisplayCoordinator(
             presenter,
             _cachePipeline,
             NotifyDisplayStateChanged);
+        _galleryScanner = galleryScanner;
+        _screenMetricsProvider = screenMetricsProvider;
     }
 
     /// <summary>
@@ -161,14 +166,14 @@ internal sealed class MainController : IDisposable
         _displayCoordinator.DisposeResources();
     }
 
-    private static async Task<ScreenMetrics> FetchScreenMetricsAsync(
+    private async Task<ScreenMetrics> FetchScreenMetricsAsync(
         TopLevel topLevel,
         CancellationToken cancellationToken)
     {
         return await Dispatcher
             .UIThread
             .InvokeAsync(
-                () => ScreenMetricsProvider.GetPrimaryMetrics(topLevel),
+                () => _screenMetricsProvider.GetPrimaryMetrics(topLevel),
                 DispatcherPriority.MaxValue,
                 cancellationToken);
     }
@@ -212,7 +217,7 @@ internal sealed class MainController : IDisposable
         _screenMetrics = await FetchScreenMetricsAsync(
             topLevel,
             cancellationToken);
-        var entries = await GalleryScanner.ScanAsync(cancellationToken);
+        var entries = await _galleryScanner.ScanAsync(cancellationToken);
 
         _navigator = new GalleryNavigator(entries);
         _initialized = true;

@@ -13,16 +13,10 @@ namespace FastImageViewer.ImageProcessing.Imaging;
 /// <summary>
 /// Provides helpers for loading original image data from disk.
 /// </summary>
-public static class OriginalImageLoader
+public sealed class OriginalImageLoader : IOriginalImageLoader
 {
-    /// <summary>
-    /// Loads the original image bytes and metadata for the specified entry.
-    /// </summary>
-    /// <param name="entry">The image entry describing the file to open.</param>
-    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
-    /// <returns>A task that provides the raw image data and metadata.</returns>
-    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
-    public static async Task<ImageData> LoadAsync(
+    /// <inheritdoc/>
+    public async Task<ImageData> LoadAsync(
         ImageEntry entry,
         CancellationToken cancellationToken)
     {

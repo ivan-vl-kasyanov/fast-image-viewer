@@ -20,8 +20,6 @@ namespace FastImageViewer.Cache;
 /// <param name="blobCache">The underlying Akavache blob cache.</param>
 public sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : IDistributedCache
 {
-    private const int DefaultCacheExpirationTimeout = AppNumericConstants.DefaultCacheExpirationDays;
-
     private readonly IBlobCache _blobCache = blobCache;
     private readonly ConcurrentDictionary<string, CacheEntryOptionsSnapshot> _options = new();
 
@@ -174,7 +172,7 @@ public sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : IDis
                         .Add(options.SlidingExpiration.Value)
                     : DateTimeOffset
                         .UtcNow
-                        .AddDays(DefaultCacheExpirationTimeout));
+                        .AddDays(AppNumericConstants.DefaultCacheExpirationDays));
     }
 
     private static void WaitForCompletion(Task task)

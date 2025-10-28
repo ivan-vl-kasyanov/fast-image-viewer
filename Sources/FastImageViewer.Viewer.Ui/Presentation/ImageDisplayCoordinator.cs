@@ -20,11 +20,11 @@ namespace FastImageViewer.Viewer.Ui.Presentation;
 /// <param name="onStateChanged">The callback invoked when presentation state changes.</param>
 internal sealed class ImageDisplayCoordinator(
     ImagePresenter presenter,
-    ImageCachePipeline cachePipeline,
+    ICachePipeline cachePipeline,
     Action onStateChanged) : IDisposable
 {
     private readonly ImagePresenter _presenter = presenter;
-    private readonly ImageCachePipeline _cachePipeline = cachePipeline;
+    private readonly ICachePipeline _cachePipeline = cachePipeline;
     private readonly ImageDisplayState _state = new(onStateChanged);
     private readonly DisplayOperationManager _operations = new();
 

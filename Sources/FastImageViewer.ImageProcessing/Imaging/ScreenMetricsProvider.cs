@@ -13,14 +13,10 @@ namespace FastImageViewer.ImageProcessing.Imaging;
 /// <summary>
 /// Supplies screen metrics for rendering decisions.
 /// </summary>
-public static class ScreenMetricsProvider
+public sealed class ScreenMetricsProvider : IScreenMetricsProvider
 {
-    /// <summary>
-    /// Gets the screen metrics for the primary display.
-    /// </summary>
-    /// <param name="topLevel">The top-level window requesting the metrics.</param>
-    /// <returns>The metrics describing the primary display.</returns>
-    public static ScreenMetrics GetPrimaryMetrics(TopLevel topLevel)
+    /// <inheritdoc/>
+    public ScreenMetrics GetPrimaryMetrics(TopLevel topLevel)
     {
         var screen = topLevel.Screens?.Primary;
         if (screen is null)

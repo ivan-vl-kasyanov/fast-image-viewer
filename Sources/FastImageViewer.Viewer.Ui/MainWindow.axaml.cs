@@ -3,11 +3,17 @@
 // This software is licensed under the GNU Affero General Public License Version 3. See LICENSE for details.
 // </copyright>
 
+using Akavache;
+
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 
+using FastImageViewer.Cache;
+using FastImageViewer.ImageProcessing.Gallery;
+using FastImageViewer.ImageProcessing.Imaging;
 using FastImageViewer.Resources;
+using FastImageViewer.Shared.FastImageViewer.Configuration;
 using FastImageViewer.Shared.FastImageViewer.Threading;
 using FastImageViewer.Viewer.Ui.Models;
 using FastImageViewer.Viewer.Ui.Presentation;
@@ -19,6 +25,7 @@ namespace FastImageViewer.Viewer.Ui;
 /// </summary>
 internal sealed partial class MainWindow : Window
 {
+    private readonly FireAndForget _fireAndForget;
     private readonly MainController _controller;
     private readonly Button _closeButton;
     private readonly Button _backwardButton;
@@ -30,12 +37,16 @@ internal sealed partial class MainWindow : Window
     private readonly Border _errorContainer;
     private readonly TextBlock _errorTextBlock;
 
+    // TODO: Use proper DI in the future.
+
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindow"/> class.
     /// </summary>
     public MainWindow()
     {
         InitializeComponent();
+
+        _fireAndForget = new FireAndForget();
 
         var controls = ResolveControlReferences();
         var displayImage = controls.DisplayImage;
@@ -50,8 +61,25 @@ internal sealed partial class MainWindow : Window
         _errorTextBlock = controls.ErrorTextBlock;
 
         var presenter = new ImagePresenter(displayImage);
+        var distributed = new AkavacheDistributedCacheAdapter(CacheDatabase.LocalMachine);
+        var fusionCache = FusionCacheFactory.Create(distributed);
+        var imageReducer = new ImageReducer();
+        var originalImageLoader = new OriginalImageLoader();
+        var cachePipeline = new ImageCachePipeline(
+            fusionCache,
+            imageReducer,
+            originalImageLoader);
+        var applicationPath = new ApplicationPaths();
+        var imageFormatHelper = new ImageFormatHelper();
+        var galleryScanner = new GalleryScanner(
+            applicationPath,
+            imageFormatHelper);
+        var screenMetricsProvider = new ScreenMetricsProvider();
         _controller = new MainController(
-            presenter);
+            presenter,
+            cachePipeline,
+            galleryScanner,
+            screenMetricsProvider);
         _controller.StateChanged += OnStateChanged;
         _controller.CloseRequested += OnCloseRequested;
 
@@ -115,7 +143,7 @@ internal sealed partial class MainWindow : Window
         RoutedEventArgs e)
     {
         _controller.ClearError(default);
-        FireAndForget.RunAsync(
+        _fireAndForget.RunAsync(
             _controller.MoveBackwardAsync(default),
             default);
     }
@@ -125,7 +153,7 @@ internal sealed partial class MainWindow : Window
         RoutedEventArgs e)
     {
         _controller.ClearError(default);
-        FireAndForget.RunAsync(
+        _fireAndForget.RunAsync(
             _controller.MoveForwardAsync(default),
             default);
     }
@@ -135,7 +163,7 @@ internal sealed partial class MainWindow : Window
         RoutedEventArgs e)
     {
         _controller.ClearError(default);
-        FireAndForget.RunAsync(
+        _fireAndForget.RunAsync(
             _controller.ToggleOriginalAsync(default),
             default);
     }
@@ -144,7 +172,7 @@ internal sealed partial class MainWindow : Window
         object? sender,
         EventArgs e)
     {
-        FireAndForget.RunAsync(
+        _fireAndForget.RunAsync(
             _controller.InitializeAsync(
                 this,
                 default),

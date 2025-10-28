@@ -15,37 +15,39 @@ namespace FastImageViewer.ImageProcessing.Gallery;
 /// <summary>
 /// Scans the gallery directory for available images.
 /// </summary>
-public static class GalleryScanner
+/// <param name="applicationPaths">The application paths used to locate the gallery.</param>
+/// <param name="imageFormatHelper">The helper that evaluates image formats.</param>
+public sealed class GalleryScanner(
+    IApplicationPaths applicationPaths,
+    IImageFormatHelper imageFormatHelper) : IGalleryScanner
 {
-    /// <summary>
-    /// Scans the gallery directory and builds image entries.
-    /// </summary>
-    /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
-    /// <returns>A task that provides the ordered gallery entries.</returns>
-    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
-    public static Task<IReadOnlyList<ImageEntry>> ScanAsync(CancellationToken cancellationToken)
+    private readonly IApplicationPaths _applicationPaths = applicationPaths;
+    private readonly IImageFormatHelper _imageFormatHelper = imageFormatHelper;
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<ImageEntry>> ScanAsync(CancellationToken cancellationToken)
     {
         return Task.Run(
             BuildEntries,
             cancellationToken);
     }
 
-    private static IReadOnlyList<ImageEntry> BuildEntries()
+    private IReadOnlyList<ImageEntry> BuildEntries()
     {
-        var root = AppPaths.GalleryDirectory;
+        var root = _applicationPaths.GalleryDirectory;
         var directory = new DirectoryInfo(root);
 
         return directory.Exists
             ? directory
                 .EnumerateFiles()
-                .Where(file => ImageFormatHelper.IsSupported(file.Extension))
+                .Where(file => _imageFormatHelper.IsSupported(file.Extension))
                 .OrderBy(file => file.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(CreateEntry)
                 .ToImmutableArray()
             : [];
     }
 
-    private static ImageEntry CreateEntry(FileInfo file)
+    private ImageEntry CreateEntry(FileInfo file)
     {
         var cacheKey = string.Concat(
             file.FullName,
@@ -54,8 +56,8 @@ public static class GalleryScanner
             AppInvariantStringConstants.CacheKeySeparator,
             file.Length);
         var extension = file.Extension.ToLowerInvariant();
-        var isComplicated = ImageFormatHelper.IsComplicated(extension);
-        var isEligible = ImageFormatHelper.IsDiskCacheEligible(
+        var isComplicated = _imageFormatHelper.IsComplicated(extension);
+        var isEligible = _imageFormatHelper.IsDiskCacheEligible(
             extension,
             file.Length);
 
