@@ -63,7 +63,7 @@ public static class AppInvariantStringConstants
     /// <summary>
     /// The application name shared across caches and logs.
     /// </summary>
-    public const string AppName = "FastImageViewer";
+    public const string ApplicationName = "FastImageViewer";
 
     /// <summary>
     /// The folder name that stores gallery images.

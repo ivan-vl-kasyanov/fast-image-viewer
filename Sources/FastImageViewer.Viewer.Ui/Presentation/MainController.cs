@@ -21,9 +21,13 @@ namespace FastImageViewer.Viewer.Ui.Presentation;
 internal sealed class MainController : IDisposable
 {
     private readonly ICachePipeline _cachePipeline;
-    private readonly ImageDisplayCoordinator _displayCoordinator;
     private readonly IGalleryScanner _galleryScanner;
     private readonly IScreenMetricsProvider _screenMetricsProvider;
+    private readonly ImageDisplayCoordinator _displayCoordinator;
+
+    private readonly Lock _disposeLock = new();
+
+    private bool _disposed;
     private GalleryNavigator? _navigator;
     private ScreenMetrics _screenMetrics;
     private bool _initialized;
@@ -44,12 +48,13 @@ internal sealed class MainController : IDisposable
         IScreenMetricsProvider screenMetricsProvider)
     {
         _cachePipeline = cachePipeline;
+        _galleryScanner = galleryScanner;
+        _screenMetricsProvider = screenMetricsProvider;
+
         _displayCoordinator = new ImageDisplayCoordinator(
             presenter,
             _cachePipeline,
             NotifyDisplayStateChanged);
-        _galleryScanner = galleryScanner;
-        _screenMetricsProvider = screenMetricsProvider;
     }
 
     /// <summary>
@@ -61,6 +66,30 @@ internal sealed class MainController : IDisposable
     /// Occurs when the viewer state has changed.
     /// </summary>
     public event Action<ViewerState>? StateChanged;
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        lock (_disposeLock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _cachePipeline.Dispose();
+            _displayCoordinator.Dispose();
+
+            GC.SuppressFinalize(this);
+
+            _disposed = true;
+        }
+    }
 
     /// <summary>
     /// Initializes the controller and loads the initial gallery state.
@@ -158,12 +187,6 @@ internal sealed class MainController : IDisposable
         await _displayCoordinator.ToggleOriginalAsync(
             _screenMetrics,
             cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    public void Dispose()
-    {
-        _displayCoordinator.DisposeResources();
     }
 
     private async Task<ScreenMetrics> FetchScreenMetricsAsync(

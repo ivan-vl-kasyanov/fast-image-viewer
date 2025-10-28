@@ -26,7 +26,11 @@ internal sealed class ImageDisplayCoordinator(
     private readonly ImagePresenter _presenter = presenter;
     private readonly ICachePipeline _cachePipeline = cachePipeline;
     private readonly ImageDisplayState _state = new(onStateChanged);
+
+    private readonly Lock _disposeLock = new();
     private readonly DisplayOperationManager _operations = new();
+
+    private bool _disposed;
 
     /// <summary>
     /// Gets the entry currently managed by the coordinator.
@@ -61,16 +65,27 @@ internal sealed class ImageDisplayCoordinator(
     /// <inheritdoc/>
     public void Dispose()
     {
-        DisposeResources();
-    }
+        if (_disposed)
+        {
+            return;
+        }
 
-    /// <summary>
-    /// Releases resources owned by the coordinator.
-    /// </summary>
-    public void DisposeResources()
-    {
-        _operations.Cancel();
-        _presenter.Dispose();
+        lock (_disposeLock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _operations.Cancel();
+
+            _presenter.Dispose();
+            _cachePipeline.Dispose();
+
+            GC.SuppressFinalize(this);
+
+            _disposed = true;
+        }
     }
 
     /// <summary>

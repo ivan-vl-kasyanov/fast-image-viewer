@@ -18,10 +18,79 @@ namespace FastImageViewer.Cache;
 /// Adapts an <see cref="IBlobCache"/> instance to the <see cref="IDistributedCache"/> contract.
 /// </summary>
 /// <param name="blobCache">The underlying Akavache blob cache.</param>
-public sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache) : IDistributedCache
+public sealed class AkavacheDistributedCacheAdapter(IBlobCache blobCache)
+    : IDistributedCache, IDisposable, IAsyncDisposable
 {
     private readonly IBlobCache _blobCache = blobCache;
+
+    private readonly SemaphoreSlim _disposeSemaphore = new(1, 1);
     private readonly ConcurrentDictionary<string, CacheEntryOptionsSnapshot> _options = new();
+
+    private bool _disposed;
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposeSemaphore.Wait();
+
+        try
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _blobCache.Dispose();
+
+            GC.SuppressFinalize(this);
+
+            _disposed = true;
+        }
+        finally
+        {
+            _disposeSemaphore.Release();
+            _disposeSemaphore.Dispose();
+        }
+    }
+
+    /// <inheritdoc/>
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await _disposeSemaphore
+            .WaitAsync()
+            .ConfigureAwait(false);
+
+        try
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            await _blobCache
+                .DisposeAsync()
+                .ConfigureAwait(false);
+
+            GC.SuppressFinalize(this);
+
+            _disposed = true;
+        }
+        finally
+        {
+            _disposeSemaphore.Release();
+            _disposeSemaphore.Dispose();
+        }
+    }
 
     /// <inheritdoc/>
     public byte[]? Get(string key)

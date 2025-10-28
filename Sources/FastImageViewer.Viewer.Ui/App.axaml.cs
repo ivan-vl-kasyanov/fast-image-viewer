@@ -12,7 +12,7 @@ namespace FastImageViewer.Viewer.Ui;
 /// <summary>
 /// Represents the Avalonia application definition and initialization logic.
 /// </summary>
-internal sealed class App : Application
+public sealed class App : Application
 {
     /// <inheritdoc/>
     public override void Initialize()

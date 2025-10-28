@@ -18,7 +18,7 @@ namespace FastImageViewer;
 /// </summary>
 [SupportedOSPlatform("windows")]
 [SupportedOSPlatform("linux")]
-internal static class Program
+public static class Program
 {
     /// <summary>
     /// Starts the application with the provided command-line arguments.
@@ -37,9 +37,7 @@ internal static class Program
         {
             CacheInitializer.Configure(applicationPaths.CacheDirectory);
 
-            AvaloniaInitializer
-                .BuildAvaloniaApplication()
-                .StartWithClassicDesktopLifetime(args);
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         catch (Exception ex)
         {
@@ -51,5 +49,14 @@ internal static class Program
         {
             Log.CloseAndFlush();
         }
+    }
+
+    /// <summary>
+    /// Builds the Avalonia application for desktop previewing and runtime hosting.
+    /// </summary>
+    /// <returns>The configured application builder instance.</returns>
+    public static AppBuilder BuildAvaloniaApp()
+    {
+        return AvaloniaInitializer.BuildAvaloniaApplication();
     }
 }

@@ -33,9 +33,11 @@ public sealed class ImageCachePipeline(
     private static readonly TimeSpan DistributedCacheDuration = TimeSpan.FromDays(AppNumericConstants.MemoryCacheDistributedDays);
 
     private readonly IFusionCache _fusionCache = fusionCache;
-    private readonly ConcurrentDictionary<string, ImageMetadata> _metadataCache = new();
     private readonly IImageReducer _imageReducer = imageReducer;
     private readonly IOriginalImageLoader _originalImageLoader = originalImageLoader;
+
+    private readonly Lock _disposeLock = new();
+    private readonly ConcurrentDictionary<string, ImageMetadata> _metadataCache = new();
 
     private readonly FusionCacheEntryOptions _cacheOptions = new()
     {
@@ -45,6 +47,31 @@ public sealed class ImageCachePipeline(
         FailSafeMaxDuration = FailSafeMaxDuration,
         DistributedCacheDuration = DistributedCacheDuration,
     };
+
+    private bool _disposed;
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        lock (_disposeLock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _fusionCache.Dispose();
+
+            GC.SuppressFinalize(this);
+
+            _disposed = true;
+        }
+    }
 
     /// <inheritdoc/>
     public async Task<ImageDataResult?> GetReducedAsync(

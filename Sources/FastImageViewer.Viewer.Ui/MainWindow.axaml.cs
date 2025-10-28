@@ -26,7 +26,7 @@ namespace FastImageViewer.Viewer.Ui;
 internal sealed partial class MainWindow : Window
 {
     private readonly FireAndForget _fireAndForget;
-    private readonly MainController _controller;
+    private readonly MainController? _controller;
     private readonly Button _closeButton;
     private readonly Button _backwardButton;
     private readonly Button _forwardButton;
@@ -36,6 +36,10 @@ internal sealed partial class MainWindow : Window
     private readonly ProgressBar _cachingProgressBar;
     private readonly Border _errorContainer;
     private readonly TextBlock _errorTextBlock;
+
+    private readonly Lock _closedLock = new();
+
+    private bool _closed;
 
     // TODO: Use proper DI in the future.
 
@@ -59,6 +63,11 @@ internal sealed partial class MainWindow : Window
         _cachingProgressBar = controls.CachingProgressBar;
         _errorContainer = controls.ErrorContainer;
         _errorTextBlock = controls.ErrorTextBlock;
+
+        if (Design.IsDesignMode)
+        {
+            return;
+        }
 
         var presenter = new ImagePresenter(displayImage);
         var distributed = new AkavacheDistributedCacheAdapter(CacheDatabase.LocalMachine);
@@ -134,17 +143,17 @@ internal sealed partial class MainWindow : Window
         object? sender,
         RoutedEventArgs e)
     {
-        _controller.ClearError(default);
-        _controller.RequestApplicationExit();
+        _controller?.ClearError(default);
+        _controller?.RequestApplicationExit();
     }
 
     private void OnBackward(
         object? sender,
         RoutedEventArgs e)
     {
-        _controller.ClearError(default);
+        _controller?.ClearError(default);
         _fireAndForget.RunAsync(
-            _controller.MoveBackwardAsync(default),
+            _controller?.MoveBackwardAsync(default) ?? Task.CompletedTask,
             default);
     }
 
@@ -152,9 +161,9 @@ internal sealed partial class MainWindow : Window
         object? sender,
         RoutedEventArgs e)
     {
-        _controller.ClearError(default);
+        _controller?.ClearError(default);
         _fireAndForget.RunAsync(
-            _controller.MoveForwardAsync(default),
+            _controller?.MoveForwardAsync(default) ?? Task.CompletedTask,
             default);
     }
 
@@ -162,9 +171,9 @@ internal sealed partial class MainWindow : Window
         object? sender,
         RoutedEventArgs e)
     {
-        _controller.ClearError(default);
+        _controller?.ClearError(default);
         _fireAndForget.RunAsync(
-            _controller.ToggleOriginalAsync(default),
+            _controller?.ToggleOriginalAsync(default) ?? Task.CompletedTask,
             default);
     }
 
@@ -173,9 +182,9 @@ internal sealed partial class MainWindow : Window
         EventArgs e)
     {
         _fireAndForget.RunAsync(
-            _controller.InitializeAsync(
+            _controller?.InitializeAsync(
                 this,
-                default),
+                default) ?? Task.CompletedTask,
             default);
     }
 
@@ -183,7 +192,22 @@ internal sealed partial class MainWindow : Window
         object? sender,
         EventArgs e)
     {
-        _controller.Dispose();
+        if (_closed)
+        {
+            return;
+        }
+
+        lock (_closedLock)
+        {
+            if (_closed)
+            {
+                return;
+            }
+
+            _controller?.Dispose();
+
+            _closed = true;
+        }
     }
 
     private void OnCloseRequested()

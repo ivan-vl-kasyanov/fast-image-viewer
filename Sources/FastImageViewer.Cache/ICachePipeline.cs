@@ -11,7 +11,7 @@ namespace FastImageViewer.Cache;
 /// <summary>
 /// Defines methods for retrieving and pre-warming cached image data.
 /// </summary>
-public interface ICachePipeline
+public interface ICachePipeline : IDisposable
 {
     /// <summary>
     /// Retrieves a reduced image using the supplied screen metrics.

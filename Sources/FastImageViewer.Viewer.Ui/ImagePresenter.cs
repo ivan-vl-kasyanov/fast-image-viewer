@@ -17,6 +17,9 @@ internal sealed class ImagePresenter(Image target) : IDisposable
 {
     private readonly Image _target = target;
 
+    private readonly Lock _disposeLock = new();
+
+    private bool _disposed;
     private Bitmap? _current;
 
     /// <summary>
@@ -41,6 +44,29 @@ internal sealed class ImagePresenter(Image target) : IDisposable
             .GetTask();
     }
 
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        lock (_disposeLock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            ClearInternal();
+
+            GC.SuppressFinalize(this);
+
+            _disposed = true;
+        }
+    }
+
     /// <summary>
     /// Clears the displayed image.
     /// </summary>
@@ -56,13 +82,6 @@ internal sealed class ImagePresenter(Image target) : IDisposable
                 DispatcherPriority.Background,
                 cancellationToken)
             .GetTask();
-    }
-
-    /// <inheritdoc/>
-    public void Dispose()
-    {
-        _current?.Dispose();
-        _current = null;
     }
 
     private void Present(

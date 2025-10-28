@@ -31,7 +31,7 @@ public static class FusionCacheFactory
     {
         var options = new FusionCacheOptions
         {
-            CacheName = AppInvariantStringConstants.AppName,
+            CacheName = AppInvariantStringConstants.ApplicationName,
             DefaultEntryOptions = new FusionCacheEntryOptions
             {
                 Duration = _cacheDuration,

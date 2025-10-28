@@ -7,6 +7,8 @@ using Avalonia;
 
 using FastImageViewer.Viewer.Ui;
 
+using ReactiveUI.Avalonia;
+
 namespace FastImageViewer;
 
 /// <summary>
@@ -20,6 +22,12 @@ internal static class AvaloniaInitializer
     /// <returns>The configured application builder instance.</returns>
     public static AppBuilder BuildAvaloniaApplication()
     {
-        return ViewerApplication.Build();
+        return AppBuilder
+            .Configure<App>()
+            .UsePlatformDetect()
+            .With(new Win32PlatformOptions())
+            .With(new X11PlatformOptions())
+            .LogToTrace()
+            .UseReactiveUI();
     }
 }

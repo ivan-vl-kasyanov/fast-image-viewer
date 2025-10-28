@@ -42,10 +42,12 @@ internal static class CacheInitializer
             .WithAkavacheCacheDatabase<SystemJsonSerializer>(builder =>
             {
                 builder
-                    .WithApplicationName(AppInvariantStringConstants.AppName)
+                    .WithApplicationName(AppInvariantStringConstants.ApplicationName)
                     .WithSqliteProvider()
                     .WithSqliteDefaults()
                     .WithLocalMachine(customCache);
             });
+
+        CacheDatabase.Initialize<SystemJsonSerializer>(AppInvariantStringConstants.ApplicationName);
     }
 }
